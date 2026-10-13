@@ -37,7 +37,7 @@ OpenAI 服务的数据处理适用其自身条款和政策。
 
 ## 页面访问
 
-普通聊天不自动读取网页或截图。只有明确要求读取/查看当前页面，或点击读取、
+普通聊天不自动读取用户当前标签页或截图。只有明确要求读取/查看当前页面，或点击读取、
 截图、上传按钮时才取得相关资料。右键选文、上传和粘贴的附件先进入草稿，
 用户发送后才提供给模型。网页读取可能需要用户授权该站点。
 截图只捕获当前网页可见区域；可能包含页面上显示的个人信息。
@@ -69,7 +69,7 @@ Citations and source links are stored locally with the conversation and retained
 in Markdown exports; disabling search does not remove previous sources. This
 toggle does not read local browser tabs or change website permissions.
 
-Ordinary chat does not automatically access pages. Explicit read/view requests
+Ordinary chat does not automatically access local browser tabs or screenshots. Explicit read/view requests
 or user actions obtain material; selections and uploaded/pasted files are staged
 as drafts until sent. Screenshots can include personal data visible on the page.
 
@@ -90,3 +90,13 @@ redacted at storage and export, but queries, URLs and errors may contain private
 information and automatic redaction cannot cover everything. Review before
 sharing. Clearing diagnostics preserves login and chats; exported files must
 be deleted separately.
+
+## 可选增强读取 / Optional enhanced public reading
+
+增强公共读取默认关闭；用户在设置中一次性授权 HTTPS 网站访问后，联网开启时模型可以直接匿名读取公开 URL。扩展不携带网站 Cookie、Authorization 或来源页面信息，不读取本地标签页、不执行页面脚本、不绕过验证，也不跟随重定向。公开网站会看到直接请求的网络地址。读取到的文字、请求网址、获取时间和状态以每对话独立快照保存在扩展本地存储；相关正文片段经工具结果随后续请求交给 OpenAI。每对话最多 8 份、480000 字符，最旧资料可能被淘汰。快照不与其他对话或浏览器同步，TXT 导出需由用户主动进行。
+
+设置中可单独清空快照，但已经发送的内容可能仍在聊天及模型请求上下文中；删除整个会话移除相应本地副本。关闭增强读取不会自动撤销已有站点访问权限，可在 Edge 扩展管理页调整。联网诊断新增增强工具调用元数据、HTTP 状态、错误阶段和文字长度，不包含完整正文，仍按既有诊断保留/脱敏规则处理。
+
+Enhanced reading is off by default. After explicit HTTPS site permission in Settings, Web-enabled requests can allow anonymous direct public URL reads. These omit site cookies, Authorization and referrer information, never execute page scripts, follow redirects or bypass verification, and do not access local tabs. Contacted public hosts see your network address. Extracted text, URLs, timestamps and status are stored as conversation-local snapshots (up to 8 and 480000 characters; oldest snapshots may be evicted); relevant chunks are submitted to OpenAI as subsequent tool outputs. Snapshots do not sync across conversations or browsers. TXT exports require user action.
+
+Clearing snapshots retains previously submitted chat/context; delete the conversation to remove corresponding local copies. Disabling enhanced reading does not automatically revoke site permission; manage it in Edge. Diagnostic metadata now includes these reader calls, observed HTTP status, failure stages and lengths, but excludes full page bodies and remains subject to the existing retention/redaction rules.

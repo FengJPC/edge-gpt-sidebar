@@ -1,6 +1,6 @@
 # Edge Add-ons 提交说明
 
-状态：0.3.9 后续更新候选材料；本版本尚未提交审核，商店状态以 Partner Center 为准。
+状态：0.4.0 后续更新候选材料；本版本尚未提交审核，商店状态以 Partner Center 为准。
 
 ## 注册
 
@@ -15,7 +15,7 @@
 ## 创建产品和上传
 
 - 在 Microsoft Edge 工作区创建新扩展。
-- 包：`dist/gpt-sidebar-0.3.9.zip`，ZIP 根目录是 manifest.json。
+- 包：`dist/gpt-sidebar-0.4.0.zip`，ZIP 根目录是 manifest.json。
 - 可见性：公开（Public）以便商店搜索；市场范围由发布者在后台确认。
 - 分类：可选 Productivity，按后台实际分类调整。
 - 主页：https://github.com/FengJPC/edge-gpt-sidebar
@@ -46,10 +46,12 @@ using material they explicitly provide or request, and manage/export local chats
 | scripting | Injects the bundled text-extraction function into the user-requested webpage. Form/input/hidden content is excluded. No remote scripts are injected. |
 | auth.openai.com | Performs official authorization/token exchange and fetches signing keys to validate identity. |
 | api.openai.com | Loads available models and sends user messages and selected conversation context to OpenAI on user request. |
-| Optional http/https hosts | Requests permission for the current site only when the user explicitly clicks the read-page/PDF action. Enables local text extraction and downloading that page's PDF. Never grants broad website access silently. |
+| Optional http/https hosts | Requests per-site access for explicit page/PDF reading. Separately, an explicit optional Settings toggle requests HTTPS site access once for anonymous public URL reads, enabling model-directed HTML/PDF extraction while Web is on. No silent grants, cookies, page scripts, redirects or local-tab access. |
 
 There is no host permission for the loopback callback: it is observed through
 webNavigation, not fetched by the extension.
+
+增强公共读取的全站 HTTPS 权限是可选项，首次开启设置时由 Edge 弹窗向用户请求；联网按钮本身不授予权限。站点访问可由用户在 Edge 管理页撤销。
 
 ## 远程代码 / Remote code
 
@@ -65,6 +67,7 @@ OpenAI 响应作为数据处理，不作为代码执行；生成文件仅供下�
 - 身份验证信息：访问、刷新和身份令牌，用于已授权的服务请求。
 - 用户主动输入/提供的消息、图片、文本和 PDF 内容；会话上下文发送到 OpenAI。
 - 用户主动开启联网时，模型按需要通过 OpenAI 托管工具查询公共网络；查询可能包含与问题有关的上下文，来源链接保存在本机和导出中。
+- 可选增强读取由浏览器直接匿名请求公共 HTTPS 网址，网站会看到用户网络地址；正文快照在当前对话的本机存储中保留，相关正文片段作为工具结果发送给 OpenAI。
 - 主动选择/读取页面的 URL、标题、正文或可见页面截图；并非后台收集完整浏览历史。
 
 声明无出售用户数据、广告分析或与核心功能无关的用途；没有项目自有后端。
@@ -103,9 +106,11 @@ sources retained in history and exports. This grants no local page-reading
 permissions. Eligibility depends on model/account/workspace policy; unsupported
 search reports an error without automatically retrying.
 
+Optional enhanced reading is off by default. Enable it in Settings and grant HTTPS site access once, then use Web-enabled chat to read public pages/PDFs anonymously. Snapshots are conversation-local and can be viewed, exported as TXT or cleared. Find and chunk tools operate on the stored snapshot. Redirects/CAPTCHAs are not followed or bypassed; failures are explicit, with no automatic retry.
+
 Settings includes local web diagnostics (enabled by default for web-enabled
 requests). Export or clear them independently, or disable recording without
-turning search off. Logs contain API-visible metadata, queries and URLs, not
+turning search off. Logs contain API-visible metadata, observed public-reader status/stages/lengths, queries and URLs, not
 raw chat, page bodies, attachments or tokens; review exports before sharing.
 
 History is local. Blank chats are omitted; drafts are preserved. Stop aborts the
@@ -118,7 +123,7 @@ for stored/transmitted data. No remote executable code is used.
 - 注册和账号验证完成后，确认上传包的后台校验结果。
 - 建议发布者在新的日常浏览器配置中手动验证登录、刷新模型、聊天、右键草稿和资料读取。
 - 自动测试用模拟请求，不能代替新的账号/扩展 ID 发行兼容性验证。
-- 0.3.9 的联网搜索尚需发布者手动验证真实账号权限；模拟工具测试不能证明服务端实际可用。
+- 0.4.0 的联网搜索尚需发布者手动验证真实账号权限；模拟工具测试不能证明服务端实际可用。
 - 提交本版本前，先将配套隐私政策和文案更新到公开仓库；不要让商店指向旧版声明。
 - 商业限制许可证已经写入包和商店文案；第三方组件保留自身许可证。
 - 根据后台实际页面确认权限说明、数据申报和隐私 URL。

@@ -15,6 +15,8 @@ GPT Sidebar keeps conversations beside your browsing so you can ask questions ab
 Features:
 - Sign in with your ChatGPT account and select available models and supported reasoning effort.
 - Enable optional web search, off by default, with clickable citations and sources. Availability depends on model, account and workspace policy.
+- Optional enhanced reading: grant HTTPS site access once, then allow anonymous public page/PDF reads with Web on. Conversation-local snapshots support precise find, chunk reads, previews and TXT export.
+- Export local web diagnostics as JSON; blocked/extraction/truncation states are explicit, without automatic retries of failed reads.
 - Send selected text from the context menu to an editable draft, without automatic sending.
 - Explicitly request page/PDF reads or visible-page screenshots, or use the relevant buttons.
 - Paste images, drop or upload files, review attachments in the draft and remove them before sending.
@@ -24,7 +26,7 @@ Features:
 
 A ChatGPT account able to authorize the connection is required. Models and limits depend on account eligibility and service access; requests use the authorized plan allowance. No local helper or Codex application is required.
 
-Ordinary chat does not automatically read webpages. Conversations, drafts, attachments and credentials are stored locally. Sending a message submits its content and relevant context to OpenAI. Chats do not sync with ChatGPT web history. Read the privacy policy for details.
+Ordinary chat does not automatically read local tabs or screenshots. Conversations, drafts, attachments and credentials are stored locally. Sending a message submits its content and relevant context to OpenAI. Chats do not sync with ChatGPT web history. Read the privacy policy for details.
 
 Scanned PDFs have no OCR. Direct Word/Excel reading and binary Word/PDF generation are unsupported. Sign-in uses an engineering adaptation to a preview service and compatibility may change; access is not guaranteed for every account.
 
