@@ -2,9 +2,11 @@ import {t,setLanguage} from './i18n.js';
 import {activePage,browserMaterial} from './browser-material.js';
 import {AUTH, API, CALLBACK, randomToken, challenge, authorizationUrl, parseCallback, verifyIdToken, modelsFrom} from './core.js';
 import {chatAction} from './chats.js';
+import {loadRegistrations,loginRegistration,rememberRegistration,disconnectRegistration} from './registrations.js';
 let chatQueue=Promise.resolve();
 let finishing = false, renewing;
 async function setup() {
+  await loadRegistrations(chrome.storage.local);
   setLanguage((await chrome.storage.local.get('uiPrefs')).uiPrefs?.language);
   await chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: true});
   await chrome.action.setTitle({title:t('打开 GPT 侧边栏')});
@@ -27,12 +29,13 @@ async function tokenRequest(fields) {
   if (!r.ok) throw new Error('官方授权接口返回 HTTP ' + r.status + '。请重新登录；不会自动重放授权请求。');
   return r.json();
 }
-async function login() {
+async function login(selected) {
+  const registration = await loginRegistration(chrome.storage.local, selected);
   const saved = await chrome.storage.local.get(['hostId', 'credential']);
   const hostId = saved.hostId || 'urn:uuid:' + crypto.randomUUID();
   await chrome.storage.local.set({hostId});
   const verifier = randomToken();
-  const pending = {state: randomToken(), nonce: randomToken(), verifier, challenge: await challenge(verifier), created: Date.now(), clientId: saved.credential?.clientId};
+  const pending = {state: randomToken(), nonce: randomToken(), verifier, challenge: await challenge(verifier), created: Date.now(), clientId: registration?.clientId, subject: registration?.subject, loginHint: registration?.email};
   const tab = await chrome.tabs.create({url: chrome.runtime.getURL('login-start.html')});
   pending.tabId = tab.id;
   await chrome.storage.session.set({pending});
@@ -56,10 +59,12 @@ chrome.webNavigation.onBeforeNavigate.addListener(async details => {
     await status('已收到登录回调，正在验证官方授权。');
     const tokens = await tokenRequest({grant_type: 'authorization_code', client_id: callback.clientId, code: callback.code, code_verifier: pending.verifier, redirect_uri: CALLBACK, resource: API});
     const identity = await verifyIdToken(tokens.id_token, callback.clientId, pending.nonce);
+    if (pending.subject && pending.subject !== identity.subject) throw new Error('所选应用登记属于其他账号，请选择对应账号重新登录。');
     const old = (await chrome.storage.local.get('credential')).credential;
     if (old && (old.subject !== identity.subject || old.clientId !== callback.clientId)) throw new Error('重新登录的账号与原账号不一致。请先退出，再连接新账号。');
     if (!String(tokens.scope || '').split(' ').includes('chatgpt.tokens.use.direct')) throw new Error('登录成功，但没有授权使用 ChatGPT 套餐。');
     if (!tokens.access_token || !tokens.refresh_token || !Number.isFinite(tokens.expires_in)) throw new Error('官方授权返回不完整。');
+    await rememberRegistration(chrome.storage.local, {...identity, clientId: callback.clientId});
     await chrome.storage.local.set({credential: {...identity, clientId: callback.clientId, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, expiresAt: Date.now() + tokens.expires_in * 1000, earliestRefreshAt: tokens.earliest_refresh_at || 0}, authStatus: '账号已连接，可以选择模型并聊天。'});
   } catch (e) { await status('连接未完成：' + e.message); }
   finally { finishing = false; }
@@ -82,8 +87,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) return;
   (async () => {
     if(msg.type==='activePage')return {target:await activePage()};if(msg.type==='browserMaterial')return browserMaterial(msg.mode,msg.target);if(msg.type==='chats'){const job=chatQueue.then(()=>chatAction(chrome.storage.local,msg.action));chatQueue=job.catch(()=>{});return job;}
-    if (msg.type === 'login') { await login(); return {}; }
-    if (msg.type === 'logout') { await chrome.storage.session.remove('pending'); await chrome.storage.local.remove('credential'); await status('已断开本机连接；可在 ChatGPT 设置中撤销应用授权。'); return {}; }
+    if (msg.type === 'accounts') return {registry: await loadRegistrations(chrome.storage.local)};
+    if (msg.type === 'login') { await login(msg.clientId); return {}; }
+    if (msg.type === 'logout') { await chrome.storage.session.remove('pending'); await disconnectRegistration(chrome.storage.local); await status('已断开本机连接；可在 ChatGPT 设置中撤销应用授权。'); return {}; }
     if (msg.type === 'token') return {token: await accessToken()};
     if (msg.type === 'models') {
       const r = await fetch(API + '/models', {headers: {Authorization: 'Bearer ' + await accessToken()}, signal: AbortSignal.timeout(30000)});

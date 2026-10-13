@@ -3,6 +3,14 @@ let language='zh-CN';
 export function setLanguage(value){language=value==='en'?'en':'zh-CN';return language;}
 export function getLanguage(){return language;}
 const pairs=[
+ ['连接已登记账号','Connect a registered account'],
+ ['连接其他账号/工作区（新登记）','Connect another account/workspace (new registration)'],
+ ['默认复用已有应用登记；只有切换其他账号或工作区时才选择新登记。','Reuse an existing registration by default. Create one only for a different account or workspace.'],
+ ['请先断开，再切换账号或工作区。','Disconnect before switching accounts or workspaces.'],
+ ['所选应用登记不存在，请重新选择。','The selected registration is unavailable. Select another account.'],
+ ['应用登记信息不完整。','Incomplete application registration.'],
+ ['应用登记与账号身份不匹配。','The registration does not match the account identity.'],
+ ['所选应用登记属于其他账号，请选择对应账号重新登录。','This registration belongs to another account. Sign in with the matching account.'],
  ['未发送草稿','Unsent draft'],
  ["官方授权接口返回 HTTP ", "Authorization endpoint returned HTTP "],
  ["。请重新登录；不会自动重放授权请求。", ". Sign in again. Authorization requests are not replayed automatically."],

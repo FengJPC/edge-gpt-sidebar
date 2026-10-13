@@ -31,7 +31,7 @@ OpenAI 服务的数据处理适用其自身条款和政策。
 
 历史记录可在扩展中删除，当前删除操作可撤销。附件草稿可移除；
 已发送资料可能仍包含在相应对话及请求上下文中，需要删除整个对话以移除本地副本。
-「断开」删除本机保存的账号授权，不会清除聊天，也不撤销服务端授权；
+「断开」删除本机保存的登录令牌，保留账号显示信息、应用登记编号和安装标识供下次复用；不会清除聊天，也不撤销服务端授权；
 服务端授权请在 ChatGPT 设置中撤销。
 卸载扩展会移除其浏览器存储，但不会删除已导出的文件或服务端已有数据。
 
@@ -52,6 +52,7 @@ or user actions obtain material; selections and uploaded/pasted files are staged
 as drafts until sent. Screenshots can include personal data visible on the page.
 
 Delete conversations to remove their local messages and request context.
-Disconnect removes locally stored credentials, but does not clear chats or
+Disconnect removes locally stored tokens while retaining account display information,
+client registrations and the installation identifier for reuse. It does not clear chats or
 revoke server-side access. Revoke access in ChatGPT settings. Uninstalling removes
 extension storage, but does not remove exported files or server-side data.

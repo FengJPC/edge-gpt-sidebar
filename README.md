@@ -4,7 +4,7 @@
 
 在 Microsoft Edge 侧栏中使用自己的 ChatGPT 账号聊天，支持右键选文、按需读取网页/PDF、图片与文件草稿、LaTeX 公式和 Markdown 导出。
 
-**这是第三方个人项目，不是 OpenAI 或 Microsoft 官方产品。** 当前版本 **0.3.5**，仅提供手动加载安装，尚未上架 Edge 扩展市场。
+**这是第三方个人项目，不是 OpenAI 或 Microsoft 官方产品。** 当前版本 **0.3.6**，仅提供手动加载安装，尚未上架 Edge 扩展市场。
 
 ## 功能
 
@@ -49,6 +49,8 @@
 
 维护者已手动验证账号登录、真实回答、右键选文与侧栏显示；跨账号发行兼容性、授权刷新及所有资料/工具的真实服务行为尚未完整验证。服务端接口、预览资格和授权行为可能变化，登录或请求可能因此失效。
 
+断开后重新登录默认复用原应用登记，避免反复新增同名应用。设置中可选择已登记账号；只有连接其他账号或工作区时才选“新登记”。已有登录信息会自动迁移登记编号，令牌存储和自动登录方式保持不变。清空扩展数据、卸载或换浏览器配置后，可能需要新登记；已撤销的登记不会自动回退为新登记。此修复不能合并服务端已有的重复项。
+
 授权、聊天和附件存储没有使用操作系统凭据库加密。「断开」只移除本机授权；服务端撤销请在 ChatGPT 设置中操作。详见 [PRIVACY.md](PRIVACY.md)。
 
 官方参考：[注册与登录](https://developers.openai.com/siwc/token-sharing-open-source/sign-in)、[模型与推理](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference)、[预览限制](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations)。这些文档不代表对本项目的认可或兼容性保证。
@@ -63,7 +65,7 @@ npm test
 npm run package
 ```
 
-`npm test` 包含 19 项检查，不需要真实账号。构建产物是 `dist/gpt-sidebar-0.3.5.zip`，仅含扩展运行文件与许可说明。
+`npm test` 覆盖授权登记复用、账号隔离及聊天功能，不需要真实账号。构建产物是 `dist/gpt-sidebar-0.3.6.zip`，仅含扩展运行文件与许可说明。
 
 Windows 中安装 Microsoft Edge 后运行 `npm run test:browser`。可通过环境变量 `EDGE_EXECUTABLE_PATH` 指定浏览器路径。测试使用独立临时配置、模拟模型请求和测试素材，不接触日常浏览器账号。
 
@@ -81,6 +83,6 @@ Windows 中安装 Microsoft Edge 后运行 `npm run test:browser`。可通过环
 
 ## Edge 扩展市场候选材料
 
-0.3.5 新增自有图标和中英文商店元数据，移除不需要的 loopback 主机访问权限（仍以 webNavigation 监听回调）。当前尚未上架或提交审核。
+0.3.6 修复断开后重新登录重复创建应用登记的问题，并提供已登记账号选择。0.3.5 已准备自有图标和中英文商店元数据，移除不需要的 loopback 主机访问权限（仍以 webNavigation 监听回调）。0.3.6 安装包可用于后续商店更新；GitHub 发布不代表商店审核通过。
 
 提交字段、权限/数据申报和测试备注见 [store/submission.md](store/submission.md)，商店文案见 [中文](store/listing-zh-CN.md) / [English](store/listing-en-US.md)。运行 `npm run assets:store` 可在 Windows Edge 下从自有 SVG 重新生成图标；正常构建直接使用仓库已包含的 PNG。

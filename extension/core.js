@@ -11,6 +11,7 @@ export function authorizationUrl(pending, hostId) {
   const url = new URL(AUTH + '/api/accounts/authorize');
   url.search = new URLSearchParams({client_id: pending.clientId || 'dynamic_agent_client',
     ...(pending.clientId ? {} : {agent_name_hint: 'Edge GPT Sidebar'}),
+    ...(pending.clientId && pending.loginHint ? {login_hint: pending.loginHint} : {}),
     ext_agent_host_id: hostId, response_type: 'code', redirect_uri: CALLBACK,
     scope: SCOPE, resource: API, state: pending.state, nonce: pending.nonce,
     code_challenge_method: 'S256', code_challenge: pending.challenge}).toString();

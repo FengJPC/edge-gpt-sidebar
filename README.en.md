@@ -3,7 +3,7 @@
 [简体中文](README.md) · [Privacy](PRIVACY.md) · [License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 An independent Microsoft Edge sidebar extension that uses your ChatGPT account.
-**Not an official OpenAI or Microsoft product.** Version 0.3.5; not listed in the Edge Add-ons store.
+**Not an official OpenAI or Microsoft product.** Version 0.3.6; not listed in the Edge Add-ons store.
 
 ## Features
 
@@ -46,6 +46,12 @@ limited to 60 pages/120000 characters, without OCR. Generated downloads are text
 files with a configurable 1–5 MB limit; binary Word/PDF generation is unsupported.
 Markdown exports do not embed images or generated file contents.
 
+Disconnecting and signing in again reuses the saved client registration. Select a saved
+account in Settings, or explicitly create a new registration for another account/workspace.
+Existing credentials migrate automatically; token storage and automatic sign-in are unchanged.
+Clearing extension data, uninstalling, or changing browser profiles can require a new registration.
+A revoked registration is not silently replaced. This fix cannot merge existing server-side entries.
+
 ## Development
 
 Node.js 22+:
@@ -78,4 +84,4 @@ private conversations, browser profiles or personal attachments.
 
 ## Edge Add-ons candidate
 
-Version 0.3.5 adds project-owned icons and Chinese/English manifest metadata, and removes an unnecessary loopback host permission while retaining the filtered webNavigation callback listener. It has not been submitted or listed. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.
+Version 0.3.6 fixes duplicate client registrations after disconnecting and adds a saved-account selector. Version 0.3.5 prepared project-owned icons and Chinese/English manifest metadata, and removed an unnecessary loopback host permission while retaining the filtered webNavigation callback listener. The 0.3.6 package is available for a future store update; a GitHub release does not imply store certification. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.
