@@ -3,6 +3,15 @@ let language='zh-CN';
 export function setLanguage(value){language=value==='en'?'en':'zh-CN';return language;}
 export function getLanguage(){return language;}
 const pairs=[
+ ['联网：关','Web: off'],
+ ['联网：开','Web: on'],
+ ['联网来源','Web sources'],
+ ['开启后允许模型按需要联网搜索；不自动读取浏览器标签页','Allow the model to search the web as needed; does not read browser tabs automatically'],
+ ['联网已开启，模型可按需要搜索公共网页','Web search enabled; the model can search public pages as needed'],
+ ['联网已关闭','Web search disabled'],
+ ['正在联网搜索…','Searching the web…'],
+ ['正在准备联网搜索…','Preparing web search…'],
+ ['当前模型或账号不支持联网搜索。请关闭联网或切换模型后手动重发；不会自动重试。','This model or account does not support web search. Turn it off or change models, then send again manually. No automatic retry.'],
  ['连接已登记账号','Connect a registered account'],
  ['连接其他账号/工作区（新登记）','Connect another account/workspace (new registration)'],
  ['默认复用已有应用登记；只有切换其他账号或工作区时才选择新登记。','Reuse an existing registration by default. Create one only for a different account or workspace.'],

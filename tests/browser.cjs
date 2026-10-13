@@ -220,6 +220,65 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
     await page.locator('#uploadInput').setInputFiles([{name:'a.md',mimeType:'text/plain',buffer:Buffer.from('A')},{name:'b.txt',mimeType:'text/plain',buffer:Buffer.from('B')}]);await page.waitForFunction(()=>document.querySelectorAll('.material-chip').length===2);
     await page.screenshot({path:path.join(root,'artifacts','sidebar-paste-drop.png')});
     checks.push('Image paste and multi-file drop stage previews without sending, survive reload, attachment-only send carries image and text; normal text paste unchanged and multi-select works');
+    // Hosted search is opt-in and does not grant local page access. Exercise the
+    // actual panel with controlled SSE citations, without a real account.
+    await ctx.unroute('https://api.openai.com/v1/responses');
+    const searchRequests=[],searchText='😀 新消息。\uE200cite\uE202turn0search0\uE201';
+    let searchMode='plain',releaseSearch;
+    await ctx.route('https://api.openai.com/v1/responses',async route=>{
+      searchRequests.push(route.request().postDataJSON());
+      if(searchMode==='unsupported')return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:{message:'web_search is not supported for this model'}})});
+      if(searchMode==='search'){
+        await new Promise(resolve=>{releaseSearch=resolve;});
+        const source={url:'https://example.com/latest',title:'最新公告'},citation={type:'url_citation',...source,start_index:Array.from('😀 新消息。').length,end_index:Array.from(searchText).length};
+        const events=[{type:'response.output_item.added',output_index:0,item:{type:'web_search_call',id:'ws_fixture',status:'in_progress'}},
+          {type:'response.web_search_call.searching',output_index:0},
+          {type:'response.output_item.done',output_index:0,item:{type:'web_search_call',id:'ws_fixture',status:'completed',action:{type:'search',query:'最新公告',sources:[source,{url:'javascript:alert(1)',title:'unsafe'}]}}},
+          {type:'response.output_item.added',output_index:1,item:{type:'message',role:'assistant',content:[]}},
+          {type:'response.output_text.delta',output_index:1,content_index:0,delta:searchText},
+          {type:'response.output_text.annotation.added',output_index:1,content_index:0,annotation_index:0,annotation:citation},
+          {type:'response.completed',response:{output:[]}}];
+        return route.fulfill({status:200,contentType:'text/event-stream',body:events.map(e=>'data: '+JSON.stringify(e)+'\n\n').join('')});
+      }
+      return route.fulfill({status:200,contentType:'text/event-stream',body:'data: '+JSON.stringify({type:'response.completed',response:{output:[{type:'message',role:'assistant',content:[{type:'output_text',text:'普通回答，没有搜索。'}]}]}})+'\n\n'});
+    });
+    await page.locator('#newChat').click();await page.waitForFunction(()=>document.querySelectorAll('.message').length===0);
+    assert.equal(await page.locator('#webSearch').getAttribute('aria-pressed'),'false');
+    await page.locator('#prompt').fill('帮我联网搜索最新公告');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
+    assert.equal(searchRequests[0].tools,undefined);assert.equal(searchRequests[0].input.at(-1).content.length,1);
+    await page.locator('#webSearch').click();await page.waitForFunction(()=>document.getElementById('webSearch').getAttribute('aria-pressed')==='true');
+    await page.reload();await page.waitForFunction(()=>document.getElementById('webSearch').getAttribute('aria-pressed')==='true'&&!document.getElementById('send').disabled);
+    assert.equal(searchRequests.length,1);
+    await page.evaluate(()=>{window.searchNotices=[];const el=document.getElementById('requestStatus'),d=Object.getOwnPropertyDescriptor(Node.prototype,'textContent');Object.defineProperty(el,'textContent',{get(){return d.get.call(this);},set(v){window.searchNotices.push(v);d.set.call(this,v);}});});
+    searchMode='search';await page.locator('#prompt').fill('搜索今天的公告');await page.locator('#send').click();
+    await page.waitForFunction(()=>document.getElementById('webSearch').disabled);for(let i=0;!releaseSearch&&i<250;i++)await new Promise(resolve=>setTimeout(resolve,20));assert.equal(typeof releaseSearch,'function');
+    assert.deepEqual(searchRequests[1].tools,[{type:'web_search',external_web_access:true}]);assert.equal(searchRequests[1].tool_choice,'auto');assert.ok(searchRequests[1].include.includes('web_search_call.action.sources'));
+    assert.equal(searchRequests[1].input.at(-1).content.length,1);releaseSearch();
+    await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
+    assert.ok((await page.evaluate(()=>window.searchNotices)).includes('正在联网搜索…'));
+    assert.equal(await page.locator('.message.assistant').last().locator('.body a').getAttribute('href'),'https://example.com/latest');
+    assert.equal(await page.locator('.web-sources a').count(),1);assert.equal(await page.locator('.web-sources a').getAttribute('rel'),'noreferrer noopener');
+    assert.ok(!(await page.locator('.message.assistant').last().innerText()).includes('\uE200'));
+    await page.evaluate(()=>{navigator.clipboard.writeText=async text=>{window.copiedSearch=text;};});await page.locator('.message.assistant').last().locator('.copy').click();
+    assert.ok((await page.evaluate(()=>window.copiedSearch)).includes('[1](<https://example.com/latest>)'));
+    await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.web-sources a').length===1&&!document.getElementById('send').disabled);
+    await page.locator('#settings').click();const searchDownload=page.waitForEvent('download');await page.locator('#export').click();
+    const exportedSearch=fs.readFileSync(await (await searchDownload).path(),'utf8');assert.ok(exportedSearch.includes('[1](<https://example.com/latest>)'));assert.ok(exportedSearch.includes('联网来源'));assert.ok(!exportedSearch.includes('\uE200'));
+    await page.locator('#language').selectOption('en');await page.waitForFunction(()=>document.getElementById('webSearch').textContent==='Web: on');
+    await page.locator('#language').selectOption('zh-CN');await page.locator('[data-close="settingsDialog"]').click();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.screenshot({path:path.join(root,'artifacts','sidebar-web-search.png')});
+    searchMode='plain';await page.locator('#prompt').fill('你好');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
+    assert.equal(searchRequests[2].tools[0].type,'web_search');assert.equal(await page.locator('.message.assistant').last().locator('.web-sources').count(),0);
+    await page.locator('#prompt').fill('生成一个文本文件');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
+    assert.deepEqual(searchRequests[3].tools.map(t=>t.type),['namespace','web_search']);
+    searchMode='unsupported';await page.locator('#prompt').fill('查最新新闻');await page.locator('#send').click();
+    await page.waitForFunction(()=>document.getElementById('requestStatus').textContent.includes('当前模型或账号不支持联网搜索'));
+    await page.waitForTimeout(250);assert.equal(searchRequests.length,5);assert.equal(await page.locator('#webSearch').isDisabled(),false);
+    await page.locator('#webSearch').click();searchMode='plain';await page.locator('#prompt').fill('你好');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
+    assert.equal(searchRequests[5].tools,undefined);assert.ok(!searchRequests[5].include.includes('web_search_call.action.sources'));
+    await page.reload();await page.waitForFunction(()=>document.getElementById('webSearch').getAttribute('aria-pressed')==='false');
+    checks.push('Web search defaults off; toggle persists and grants hosted auto search only, stays locked during generation; streamed citations/status, safe source links, history and Markdown export survive; bilingual UI, no-search replies, file tools coexist; unsupported search never auto-retries and disabling removes the tool');
     const beforeDisconnect=await worker.evaluate(async()=>JSON.stringify((await chrome.storage.local.get('chatStore')).chatStore));
     await page.locator('#settings').click();
     assert.equal(await page.locator('#loginAccountLabel').isVisible(),false);

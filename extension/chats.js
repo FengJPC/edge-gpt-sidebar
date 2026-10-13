@@ -1,3 +1,4 @@
+import {sourceMarkdown} from './web-search.js';
 export function newChat(){return {id:crypto.randomUUID(),title:'新对话',created:Date.now(),updated:Date.now(),messages:[],draft:'',source:null};}
 export function isBlankChat(c){return !c.messages?.length&&!c.context?.length&&!String(c.draft||'').trim()&&!c.source&&!c.materials?.length;}
 export async function chatAction(storage,action){
@@ -16,7 +17,7 @@ export async function chatAction(storage,action){
  await storage.set({chatStore:store});if(!saved.chatStore)await storage.remove(['chatHistory','composer','composerSource']);return {store,deleted};
 }
 export function obsidianMath(text){return text.split(/(```[\s\S]*?```|`[^`\n]*`)/g).map((p,i)=>i%2?p:p.replace(/\\\(([\s\S]*?)\\\)/g,(_,m)=>'$'+m+'$').replace(/\\\[([\s\S]*?)\\\]/g,(_,m)=>'\n$$\n'+m.trim()+'\n$$\n')).join('');}
-export function exportChat(c){return '# '+c.title+'\n\n'+c.messages.map(m=>'## '+(m.role==='user'?'你':'GPT')+(m.failed?'（未完成）':'')+'\n\n'+obsidianMath(m.content||'')+(m.files?.length?'\n\n附件：'+m.files.map(f=>f.name).join('、'):'')).join('\n\n---\n\n')+'\n';}
+export function exportChat(c){return '# '+c.title+'\n\n'+c.messages.map(m=>'## '+(m.role==='user'?'你':'GPT')+(m.failed?'（未完成）':'')+'\n\n'+obsidianMath(m.citedContent||m.content||'')+(m.sources?.length?'\n\n联网来源：\n'+sourceMarkdown(m.sources):'')+(m.files?.length?'\n\n附件：'+m.files.map(f=>f.name).join('、'):'')).join('\n\n---\n\n')+'\n';}
 export function effortsFor(m){const known=['none','minimal','low','medium','high','xhigh','max'];if(m?.efforts?.length)return m.efforts.filter(e=>known.includes(e));if(m?.id==='gpt-6.1-sol')return ['low','medium','high','xhigh','max'];return [];}
 export function fileLimitMB(value){const n=Number(value);return [1,2,3,4,5].includes(n)?n:1;}
 export function textFile(a,limit=1){if(typeof a?.content!=='string'||new TextEncoder().encode(a.content).length>fileLimitMB(limit)*1000000)throw new Error('文件内容超过设置的 '+fileLimitMB(limit)+' MB 上限或格式不正确。');const name=String(a.filename||'').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').slice(0,120);if(!/\.(md|txt|csv|json|html|tex|xml|yaml|yml|log)$/i.test(name))throw new Error('目前只支持文本类文件。');return {id:crypto.randomUUID(),name,content:a.content};}

@@ -3,13 +3,14 @@
 [简体中文](README.md) · [Privacy](PRIVACY.md) · [License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 An independent Microsoft Edge sidebar extension that uses your ChatGPT account.
-**Not an official OpenAI or Microsoft product.** Version 0.3.6; not listed in the Edge Add-ons store.
+**Not an official OpenAI or Microsoft product.** Version 0.3.7 supports manual installation; consult Partner Center for store review and release status.
 
 ## Features
 
 - Chat history, search, rename, delete/undo and Markdown export.
 - Model and supported reasoning-effort selection, font sizes, light/dark themes and Chinese/English UI.
 - Context-menu selections, image paste, file drop/upload and editable attachment drafts.
+- Optional web search, off by default, with clickable citations and sources retained in history and Markdown exports.
 - Explicit page/PDF reads and visible-page screenshots; ordinary chat does not access pages automatically.
 - Local Markdown/KaTeX rendering, PDF text extraction and downloadable text-file tools.
 - Stop streaming responses; interrupted requests are not automatically resent.
@@ -28,6 +29,10 @@ To update, replace the files, reload the extension and reopen the sidebar. Do no
 
 ## Important boundaries
 
+The **Web: off/on** button above the composer enables OpenAI's hosted `web_search` tool. Its setting persists in the current browser profile. When enabled, the model chooses whether to search; ordinary messages need not trigger a search. Turning it off removes the tool from new requests while preserving earlier sources.
+
+Search availability depends on the model, account and workspace policy. Unsupported search shows an error without automatic retries; turn it off or change models and resend manually. Queries may contain conversation information relevant to the question and are processed by OpenAI. This toggle grants no local tab, screenshot or file access; those actions still require explicit requests or buttons. Public webpage content is treated as material, not executable extension instructions.
+
 The OAuth callback is an engineering adaptation: navigation to the fixed loopback
 callback is intercepted without a local HTTP listener. Official local callback
 documentation requires a listener. This is **not a claim of officially supported
@@ -44,7 +49,7 @@ Attachments are drafts until sent: up to 3 files, 20 MB each. Supported images a
 PNG/JPG/WebP; images are resized to a longest edge of 2048 px. PDF extraction is
 limited to 60 pages/120000 characters, without OCR. Generated downloads are text
 files with a configurable 1–5 MB limit; binary Word/PDF generation is unsupported.
-Markdown exports do not embed images or generated file contents.
+Markdown exports retain web citations and sources, but do not embed images or generated file contents.
 
 Disconnecting and signing in again reuses the saved client registration. Select a saved
 account in Settings, or explicitly create a new registration for another account/workspace.
@@ -84,4 +89,4 @@ private conversations, browser profiles or personal attachments.
 
 ## Edge Add-ons candidate
 
-Version 0.3.6 fixes duplicate client registrations after disconnecting and adds a saved-account selector. Version 0.3.5 prepared project-owned icons and Chinese/English manifest metadata, and removed an unnecessary loopback host permission while retaining the filtered webNavigation callback listener. The 0.3.6 package is available for a future store update; a GitHub release does not imply store certification. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.
+Version 0.3.7 adds optional web search, citations and source exports without new browser permissions. Version 0.3.6 fixed duplicate client registrations after disconnecting. Before submitting 0.3.7, manually verify real-account search eligibility and publish the matching privacy policy. A GitHub release does not imply store certification. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.

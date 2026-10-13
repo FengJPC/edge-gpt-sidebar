@@ -14,6 +14,7 @@ GPT Sidebar keeps conversations beside your browsing so you can ask questions ab
 
 Features:
 - Sign in with your ChatGPT account and select available models and supported reasoning effort.
+- Enable optional web search, off by default, with clickable citations and sources. Availability depends on model, account and workspace policy.
 - Send selected text from the context menu to an editable draft, without automatic sending.
 - Explicitly request page/PDF reads or visible-page screenshots, or use the relevant buttons.
 - Paste images, drop or upload files, review attachments in the draft and remove them before sending.

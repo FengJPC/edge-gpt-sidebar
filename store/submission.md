@@ -1,6 +1,6 @@
 # Edge Add-ons 提交说明
 
-状态：0.3.5 提交候选材料，尚未提交、审核或上架。开发者账号需由发布者注册。
+状态：0.3.7 后续更新候选材料；本版本尚未提交审核，商店状态以 Partner Center 为准。
 
 ## 注册
 
@@ -15,7 +15,7 @@
 ## 创建产品和上传
 
 - 在 Microsoft Edge 工作区创建新扩展。
-- 包：`dist/gpt-sidebar-0.3.5.zip`，ZIP 根目录是 manifest.json。
+- 包：`dist/gpt-sidebar-0.3.7.zip`，ZIP 根目录是 manifest.json。
 - 可见性：公开（Public）以便商店搜索；市场范围由发布者在后台确认。
 - 分类：可选 Productivity，按后台实际分类调整。
 - 主页：https://github.com/FengJPC/edge-gpt-sidebar
@@ -64,6 +64,7 @@ OpenAI 响应作为数据处理，不作为代码执行；生成文件仅供下�
 - 身份信息：登录账号的邮件/名称和身份标识（本机存储）。
 - 身份验证信息：访问、刷新和身份令牌，用于已授权的服务请求。
 - 用户主动输入/提供的消息、图片、文本和 PDF 内容；会话上下文发送到 OpenAI。
+- 用户主动开启联网时，模型按需要通过 OpenAI 托管工具查询公共网络；查询可能包含与问题有关的上下文，来源链接保存在本机和导出中。
 - 主动选择/读取页面的 URL、标题、正文或可见页面截图；并非后台收集完整浏览历史。
 
 声明无出售用户数据、广告分析或与核心功能无关的用途；没有项目自有后端。
@@ -96,6 +97,12 @@ does not read webpages or screenshots. Use the read button, screenshot button or
 an explicit read/view instruction to obtain material, then send it. Upload/paste/drop
 files to stage them; remove them before sending if desired.
 
+Web search is off by default. Enable the Web toggle above the composer to allow
+the model to use OpenAI's hosted search as needed, with clickable citations and
+sources retained in history and exports. This grants no local page-reading
+permissions. Eligibility depends on model/account/workspace policy; unsupported
+search reports an error without automatically retrying.
+
 History is local. Blank chats are omitted; drafts are preserved. Stop aborts the
 request and it is not automatically resent. Disconnect removes local authorization;
 server-side authorization is revoked in ChatGPT settings. See the privacy policy
@@ -106,7 +113,8 @@ for stored/transmitted data. No remote executable code is used.
 - 注册和账号验证完成后，确认上传包的后台校验结果。
 - 建议发布者在新的日常浏览器配置中手动验证登录、刷新模型、聊天、右键草稿和资料读取。
 - 自动测试用模拟请求，不能代替新的账号/扩展 ID 发行兼容性验证。
-- 0.3.5 尚未由发布者重新验证真实账号登录；不要向审核人员声称这一项已完成。
+- 0.3.7 的联网搜索尚需发布者手动验证真实账号权限；模拟工具测试不能证明服务端实际可用。
+- 提交本版本前，先将配套隐私政策和文案更新到公开仓库；不要让商店指向旧版声明。
 - 商业限制许可证已经写入包和商店文案；第三方组件保留自身许可证。
 - 根据后台实际页面确认权限说明、数据申报和隐私 URL。
 - 完成并核对所有内容后，再由发布者提交审核；这不等于立即上架。

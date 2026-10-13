@@ -16,6 +16,11 @@
 选文、资料和图片。工具创建文件时，可通过后续请求向模型反馈创建结果。
 OpenAI 服务的数据处理适用其自身条款和政策。
 
+联网搜索默认关闭。用户开启后，发送消息时会允许模型按需要使用 OpenAI 托管的搜索工具，
+搜索查询及与问题有关的上下文可能用于查询公共网络，由 OpenAI 服务处理。
+引用和来源链接随聊天保存在本机，并包含在 Markdown 导出中。关闭开关不会删除已有来源。
+联网开关不自动读取用户浏览器标签页，也不更改已有站点访问权限。
+
 用户主动读取在线 PDF 时，扩展也会访问该 PDF 的原始网址；请求不附带站点 Cookie。
 网页正文和 PDF 解析、图片缩放及文本文件创建在本机进行。
 项目不设自有后端、遥测或分析服务。
@@ -46,6 +51,13 @@ Sign-in and token refresh use OpenAI's authorization service. Sending a message
 submits its text, relevant conversation context and attached material to the
 OpenAI API. Online PDF reads also contact the original PDF host without cookies.
 There is no project-operated backend, telemetry or analytics service.
+
+Web search is off by default. Enabling it allows the model to use OpenAI's hosted
+search tool as needed when a message is sent. Queries and relevant conversation
+information may be used to search the public web and are processed by OpenAI.
+Citations and source links are stored locally with the conversation and retained
+in Markdown exports; disabling search does not remove previous sources. This
+toggle does not read local browser tabs or change website permissions.
 
 Ordinary chat does not automatically access pages. Explicit read/view requests
 or user actions obtain material; selections and uploaded/pasted files are staged
