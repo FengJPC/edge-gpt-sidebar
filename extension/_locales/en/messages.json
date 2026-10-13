@@ -1,0 +1,11 @@
+{
+  "extensionName": {
+    "message": "GPT Sidebar"
+  },
+  "extensionDescription": {
+    "message": "Chat with your ChatGPT account in the Edge sidebar. Stage selections and images, read materials on request and export Markdown."
+  },
+  "actionTitle": {
+    "message": "Open GPT Sidebar"
+  }
+}

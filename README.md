@@ -4,7 +4,7 @@
 
 在 Microsoft Edge 侧栏中使用自己的 ChatGPT 账号聊天，支持右键选文、按需读取网页/PDF、图片与文件草稿、LaTeX 公式和 Markdown 导出。
 
-**这是第三方个人项目，不是 OpenAI 或 Microsoft 官方产品。** 当前版本 **0.3.4**，仅提供手动加载安装，尚未上架 Edge 扩展市场。
+**这是第三方个人项目，不是 OpenAI 或 Microsoft 官方产品。** 当前版本 **0.3.5**，仅提供手动加载安装，尚未上架 Edge 扩展市场。
 
 ## 功能
 
@@ -63,7 +63,7 @@ npm test
 npm run package
 ```
 
-`npm test` 包含 19 项检查，不需要真实账号。构建产物是 `dist/gpt-sidebar-0.3.4.zip`，仅含扩展运行文件与许可说明。
+`npm test` 包含 19 项检查，不需要真实账号。构建产物是 `dist/gpt-sidebar-0.3.5.zip`，仅含扩展运行文件与许可说明。
 
 Windows 中安装 Microsoft Edge 后运行 `npm run test:browser`。可通过环境变量 `EDGE_EXECUTABLE_PATH` 指定浏览器路径。测试使用独立临时配置、模拟模型请求和测试素材，不接触日常浏览器账号。
 
@@ -78,3 +78,9 @@ Windows 中安装 Microsoft Edge 后运行 `npm run test:browser`。可通过环
 由于带有非商业限制，本项目是 **源码可用（source-available）** 项目，不宣称符合 OSI 开源定义。提交贡献不会转让贡献者版权，也不会自动授予维护者商业授权权利。
 
 请通过仓库 Issues 报告经过脱敏的问题，不要上传令牌、完整授权回调、真实聊天或个人资料。
+
+## Edge 扩展市场候选材料
+
+0.3.5 新增自有图标和中英文商店元数据，移除不需要的 loopback 主机访问权限（仍以 webNavigation 监听回调）。当前尚未上架或提交审核。
+
+提交字段、权限/数据申报和测试备注见 [store/submission.md](store/submission.md)，商店文案见 [中文](store/listing-zh-CN.md) / [English](store/listing-en-US.md)。运行 `npm run assets:store` 可在 Windows Edge 下从自有 SVG 重新生成图标；正常构建直接使用仓库已包含的 PNG。

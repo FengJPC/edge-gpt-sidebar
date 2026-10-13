@@ -1,0 +1,39 @@
+# 简体中文商店文案
+
+## 名称
+
+GPT 侧边栏
+
+## 简短说明
+
+在 Edge 侧栏使用自己的 ChatGPT 账号，支持选文草稿、按需读取资料、图片附件、公式和 Markdown 导出。
+
+## 详细说明
+
+GPT 侧边栏把对话放在浏览器侧边，帮助你围绕正在阅读的资料提问、整理文字和保存笔记。扩展由 FengJPC 独立开发，不是 OpenAI 或 Microsoft 官方产品。
+
+主要功能：
+- 使用自己的 ChatGPT 账号登录，选择可用模型及其支持的思考强度。
+- 右键发送选中文字到可编辑草稿；不会自动发送。
+- 明确要求读取资料，或点击按钮后，读取当前网页或在线 PDF、截取网页可见区域。
+- 上传、粘贴图片或拖入文件，先在草稿中预览和移除，发送后才提供给模型。
+- 显示 Markdown 和 LaTeX 公式，支持字体大小、明暗主题以及中英文界面。
+- 查看、搜索、重命名和删除本机对话，导出为 Markdown。
+- 按明确请求生成可下载的文本文件，可设置单文件 1–5 MB 上限。
+
+使用前需要能够登录并授权的 ChatGPT 账号，可用模型和额度取决于服务权限；请求会使用账号的已授权套餐额度。扩展无需本地辅助程序，也无需打开 Codex。
+
+普通聊天不会自动读取网页。对话、草稿、附件和授权保存在本机；用户主动发送的消息及相关上下文会传给 OpenAI，不与 ChatGPT 官网历史同步。详细数据处理方式请阅读隐私政策。
+
+限制：扫描 PDF 没有 OCR；不支持直接读取 Word/Excel 或生成二进制 Word/PDF。登录接入属于预览服务的工程适配，兼容性可能随服务变化；不保证所有账号均可登录。
+
+项目源码按 PolyForm Noncommercial 1.0.0 提供。默认许可证未允许的商业用途需获得额外授权。
+
+## 分类、支持与链接
+
+- 建议分类：Productivity（以实际后台分类为准）
+- 支持：https://github.com/FengJPC/edge-gpt-sidebar/issues
+- 隐私政策：https://github.com/FengJPC/edge-gpt-sidebar/blob/main/PRIVACY.md
+- 项目主页：https://github.com/FengJPC/edge-gpt-sidebar
+- 搜索词：sidebar, ChatGPT, PDF, Markdown, 侧边栏
+- Logo：logo-300.png

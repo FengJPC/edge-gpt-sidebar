@@ -1,0 +1,11 @@
+{
+  "extensionName": {
+    "message": "GPT 侧边栏"
+  },
+  "extensionDescription": {
+    "message": "在 Edge 侧栏使用自己的 ChatGPT 账号，支持选文草稿、按需读取资料、图片附件、公式和 Markdown 导出。"
+  },
+  "actionTitle": {
+    "message": "打开 GPT 侧边栏"
+  }
+}

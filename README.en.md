@@ -3,7 +3,7 @@
 [简体中文](README.md) · [Privacy](PRIVACY.md) · [License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 An independent Microsoft Edge sidebar extension that uses your ChatGPT account.
-**Not an official OpenAI or Microsoft product.** Version 0.3.4; not listed in the Edge Add-ons store.
+**Not an official OpenAI or Microsoft product.** Version 0.3.5; not listed in the Edge Add-ons store.
 
 ## Features
 
@@ -75,3 +75,7 @@ grant the maintainer commercial licensing rights.
 
 Report sanitized issues only. Do not upload tokens, complete OAuth callbacks,
 private conversations, browser profiles or personal attachments.
+
+## Edge Add-ons candidate
+
+Version 0.3.5 adds project-owned icons and Chinese/English manifest metadata, and removes an unnecessary loopback host permission while retaining the filtered webNavigation callback listener. It has not been submitted or listed. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.
