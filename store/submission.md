@@ -1,6 +1,6 @@
 # Edge Add-ons 提交说明
 
-状态：0.3.7 后续更新候选材料；本版本尚未提交审核，商店状态以 Partner Center 为准。
+状态：0.3.9 后续更新候选材料；本版本尚未提交审核，商店状态以 Partner Center 为准。
 
 ## 注册
 
@@ -15,7 +15,7 @@
 ## 创建产品和上传
 
 - 在 Microsoft Edge 工作区创建新扩展。
-- 包：`dist/gpt-sidebar-0.3.7.zip`，ZIP 根目录是 manifest.json。
+- 包：`dist/gpt-sidebar-0.3.9.zip`，ZIP 根目录是 manifest.json。
 - 可见性：公开（Public）以便商店搜索；市场范围由发布者在后台确认。
 - 分类：可选 Productivity，按后台实际分类调整。
 - 主页：https://github.com/FengJPC/edge-gpt-sidebar
@@ -103,6 +103,11 @@ sources retained in history and exports. This grants no local page-reading
 permissions. Eligibility depends on model/account/workspace policy; unsupported
 search reports an error without automatically retrying.
 
+Settings includes local web diagnostics (enabled by default for web-enabled
+requests). Export or clear them independently, or disable recording without
+turning search off. Logs contain API-visible metadata, queries and URLs, not
+raw chat, page bodies, attachments or tokens; review exports before sharing.
+
 History is local. Blank chats are omitted; drafts are preserved. Stop aborts the
 request and it is not automatically resent. Disconnect removes local authorization;
 server-side authorization is revoked in ChatGPT settings. See the privacy policy
@@ -113,7 +118,7 @@ for stored/transmitted data. No remote executable code is used.
 - 注册和账号验证完成后，确认上传包的后台校验结果。
 - 建议发布者在新的日常浏览器配置中手动验证登录、刷新模型、聊天、右键草稿和资料读取。
 - 自动测试用模拟请求，不能代替新的账号/扩展 ID 发行兼容性验证。
-- 0.3.7 的联网搜索尚需发布者手动验证真实账号权限；模拟工具测试不能证明服务端实际可用。
+- 0.3.9 的联网搜索尚需发布者手动验证真实账号权限；模拟工具测试不能证明服务端实际可用。
 - 提交本版本前，先将配套隐私政策和文案更新到公开仓库；不要让商店指向旧版声明。
 - 商业限制许可证已经写入包和商店文案；第三方组件保留自身许可证。
 - 根据后台实际页面确认权限说明、数据申报和隐私 URL。

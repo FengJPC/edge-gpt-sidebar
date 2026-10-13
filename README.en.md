@@ -3,17 +3,25 @@
 [简体中文](README.md) · [Privacy](PRIVACY.md) · [License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 An independent Microsoft Edge sidebar extension that uses your ChatGPT account.
-**Not an official OpenAI or Microsoft product.** Version 0.3.7 supports manual installation; consult Partner Center for store review and release status.
+**Not an official OpenAI or Microsoft product.** Version 0.3.9 supports manual installation; consult Partner Center for store review and release status.
 
 ## Features
 
 - Chat history, search, rename, delete/undo and Markdown export.
 - Model and supported reasoning-effort selection, font sizes, light/dark themes and Chinese/English UI.
 - Context-menu selections, image paste, file drop/upload and editable attachment drafts.
-- Optional web search, off by default, with clickable citations and sources retained in history and Markdown exports.
+- Optional autonomous public web search/open/find, off by default, with clickable citations and collapsed source lists retained in history and Markdown exports.
 - Explicit page/PDF reads and visible-page screenshots; ordinary chat does not access pages automatically.
 - Local Markdown/KaTeX rendering, PDF text extraction and downloadable text-file tools.
 - Stop streaming responses; interrupted requests are not automatically resent.
+
+## Web diagnostics
+
+Open Settings → Web diagnostics → Export diagnostics JSON. Recording is enabled by default for new web-enabled requests; previous requests cannot be recovered. Turning recording off leaves search availability unchanged. Existing diagnostics can be exported or cleared independently.
+
+The current browser profile retains the latest 50 API requests, up to 2 MB. Tool follow-up rounds have separate request records linked by a local generation_id. Records contain timestamps, model/effort, API HTTP status, available x-request-id/response_id, web call IDs/status/actions, query lists/URLs/find patterns, error summaries and source URLs. Raw chat, page bodies, attachments, headers and tokens are not intentionally recorded. Storage and export both project allowed fields and redact common credential patterns; queries, URLs and errors may still contain private information. Review before sharing. Diagnostics are not fed back to the model or included in chat Markdown exports.
+
+Null means not exposed by the API; explicitly empty URLs stay empty. Query-to-result mappings are not guessed from aggregate tool sources. display_number is a sidebar label, not an internal model reference ID. Request HTTP status is not webpage HTTP status; a completed tool call does not prove readable content, and failed web calls may coexist with a completed response. started means no terminal event was observed; the server may still be running or the client may have been interrupted.
 
 ## Install
 
@@ -29,7 +37,9 @@ To update, replace the files, reload the extension and reopen the sidebar. Do no
 
 ## Important boundaries
 
-The **Web: off/on** button above the composer enables OpenAI's hosted `web_search` tool. Its setting persists in the current browser profile. When enabled, the model chooses whether to search; ordinary messages need not trigger a search. Turning it off removes the tool from new requests while preserving earlier sources.
+The **Web: off/on** button above the composer enables OpenAI's hosted `web_search` tool. Its setting persists in the current browser profile. When enabled, the model may autonomously search, open public pages, find text within pages and continue researching without asking permission for each operation; ordinary messages need not trigger a search. Turning it off removes the tool from new requests while preserving earlier sources. Source lists start collapsed; click their headings to expand. Reopening the panel or switching conversations resets expansion, while Markdown exports still retain sources.
+
+Local-material restrictions apply to browser tabs and screenshots, not authorized public web search. Requests to read a supplied public URL do not automatically read an unrelated active tab. Instructions require the model to distinguish useful text from empty returns, errors or page shells and not treat a completed call as proof of verification; prompt instructions cannot guarantee every response will comply.
 
 Search availability depends on the model, account and workspace policy. Unsupported search shows an error without automatic retries; turn it off or change models and resend manually. Queries may contain conversation information relevant to the question and are processed by OpenAI. This toggle grants no local tab, screenshot or file access; those actions still require explicit requests or buttons. Public webpage content is treated as material, not executable extension instructions.
 
@@ -89,4 +99,4 @@ private conversations, browser profiles or personal attachments.
 
 ## Edge Add-ons candidate
 
-Version 0.3.7 adds optional web search, citations and source exports without new browser permissions. Version 0.3.6 fixed duplicate client registrations after disconnecting. Before submitting 0.3.7, manually verify real-account search eligibility and publish the matching privacy policy. A GitHub release does not imply store certification. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.
+Version 0.3.9 collapses source lists by default, resolves public web versus local material policy conflicts and avoids unrelated tab reads for public URL requests. Version 0.3.7 added optional web search, citations and source exports without new browser permissions. Before submitting 0.3.9, manually verify real-account search eligibility and publish the matching privacy policy. A GitHub release does not imply store certification. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.

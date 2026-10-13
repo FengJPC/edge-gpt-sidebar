@@ -3,10 +3,21 @@ let language='zh-CN';
 export function setLanguage(value){language=value==='en'?'en':'zh-CN';return language;}
 export function getLanguage(){return language;}
 const pairs=[
+ ['联网诊断','Web diagnostics'],
+ ['记录联网请求的诊断信息','Record diagnostics for web-enabled requests'],
+ ['仅保存在本机，最近 50 次请求、最多 2 MB；不主动记录聊天正文、附件或令牌。查询、网址和错误摘要可能包含隐私，请检查后再分享。','Stored locally: latest 50 requests, up to 2 MB. Chat text, attachments and tokens are not intentionally recorded. Queries, URLs and error summaries may contain private information; review before sharing.'],
+ ['已保存请求：','Saved requests: '],
+ ['导出诊断 JSON','Export diagnostics JSON'],
+ ['清空诊断记录','Clear diagnostics'],
+ ['已导出联网诊断','Web diagnostics exported'],
+ ['已清空联网诊断','Web diagnostics cleared'],
+ ['联网诊断保存失败','Could not save web diagnostics'],
+ ['联网诊断读取失败','Could not read web diagnostics'],
+ ['联网诊断清空失败','Could not clear web diagnostics'],
  ['联网：关','Web: off'],
  ['联网：开','Web: on'],
  ['联网来源','Web sources'],
- ['开启后允许模型按需要联网搜索；不自动读取浏览器标签页','Allow the model to search the web as needed; does not read browser tabs automatically'],
+ ['开启后允许模型自主搜索、打开和查找公共网页；不自动读取浏览器标签页','Allow autonomous search, opening and finding within public webpages; does not read browser tabs automatically'],
  ['联网已开启，模型可按需要搜索公共网页','Web search enabled; the model can search public pages as needed'],
  ['联网已关闭','Web search disabled'],
  ['正在联网搜索…','Searching the web…'],

@@ -6,6 +6,9 @@ test('ordinary conversation, questions and negations never trigger page reads',(
  assert.equal(requestedMaterial('读一下当前网页'),'read');assert.equal(requestedMaterial('请看一下'),'read');assert.equal(requestedMaterial('看一下左边这篇论文'),'read');assert.equal(requestedMaterial('请截图看看页面图表'),'screenshot');
  assert.equal(wantsFile('你好'),false);assert.equal(wantsFile('请生成研究笔记文件'),true);assert.equal(wantsFile('不要生成文件'),false);
  assert.equal(wantsFile('怎么生成文件'),false);assert.equal(wantsFile('你能生成文件吗'),false);
+ // Reading a supplied public link must not leak the unrelated current tab.
+ for(const text of ['请读一下 https://arxiv.org/abs/1706.03762 这篇论文','读取 https://example.com/ 网页','看一下 https://example.com/ 页面图表'])assert.equal(requestedMaterial(text),null,text);
+ assert.equal(requestedMaterial('读一下当前网页 https://example.com/'),'read');
 });
 test('user-selected materials use text and image parts without converting data to instructions',()=>{
  const c=materialInput('看一下',[{name:'文档',text:'数据'},{name:'截图',image:'data:image/jpeg;base64,AA=='}]);assert.equal(c[0].text,'看一下');assert.equal(c.at(-1).type,'input_image');assert.equal(c.at(-1).image_url,'data:image/jpeg;base64,AA==');

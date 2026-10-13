@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {searchOptions,searchOutput,searchStatus,searchFailure,sourceMarkdown} from '../extension/web-search.js';
 import {responseTurn} from '../extension/response-turn.js';
 import {exportChat,FILE_TOOL} from '../extension/chats.js';
+import {MATERIAL_POLICY} from '../extension/materials.js';
 
 test('web toggle alone grants hosted search; file tool and local material permissions remain separate',()=>{
  assert.deepEqual(searchOptions(false).tools,[]);
@@ -12,6 +13,9 @@ test('web toggle alone grants hosted search; file tool and local material permis
  assert.equal(on.tools.length,2);assert.equal(on.tools[1].type,'web_search');assert.equal(on.tools[1].external_web_access,true);
  assert.ok(on.include.includes('web_search_call.action.sources'));
  assert.ok(on.instructions.includes('不必每次搜索'));assert.ok(on.instructions.includes('不代表允许读取用户浏览器标签页'));
+ for(const operation of ['search','open_page','find_in_page'])assert.ok(on.instructions.includes(operation));
+ assert.ok(on.instructions.includes('无需再次询问'));assert.ok(on.instructions.includes('不能把未核实的细节当作已核实'));
+ assert.ok(MATERIAL_POLICY.includes('不约束已开启的公共互联网搜索工具'));
  assert.equal(searchOptions(false).include.includes('web_search_call.action.sources'),false);
 });
 test('streamed text and citation annotations survive an empty terminal output and Unicode offsets',()=>{

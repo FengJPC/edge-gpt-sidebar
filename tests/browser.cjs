@@ -82,7 +82,7 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
       const output=round===1?[{type:'function_call',id:'fc_fixture',call_id:'call_fixture',name:'create_text_file',namespace:'files',arguments:JSON.stringify({filename:'研究笔记.md',content:'# 笔记\n\n布洛赫定理。'})}]:[{type:'message',role:'assistant',content:[{type:'output_text',text:'**文件已生成**\n\n- 可以下载笔记\n\n<script>window.injected=true</script><img src=x onerror="window.injected=true">'}]}];
       const reasoning={type:'reasoning',id:'rs_fixture',summary:[],encrypted_content:'opaque-fixture'};
       const events=round===1?[{type:'response.output_item.done',output_index:0,item:reasoning},{type:'response.output_item.done',output_index:1,item:output[0]}]:[{type:'response.output_text.delta',delta:output[0].content[0].text},{type:'response.output_item.done',output_index:0,item:output[0]}];events.push({type:'response.completed',response:{output:[]}});
-      return route.fulfill({status:200,contentType:'text/event-stream',body:events.map(e=>'data: '+JSON.stringify(e)+'\n\n').join('')});
+      return route.fulfill({status:200,headers:{'x-request-id':'req_web_fixture'},contentType:'text/event-stream',body:events.map(e=>'data: '+JSON.stringify(e)+'\n\n').join('')});
     });
     await page.locator('#prompt').fill('请生成研究笔记文件');
     await page.locator('#send').click();
@@ -227,18 +227,22 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
     let searchMode='plain',releaseSearch;
     await ctx.route('https://api.openai.com/v1/responses',async route=>{
       searchRequests.push(route.request().postDataJSON());
+      if(searchMode==='empty-stream')return route.fulfill({status:200,contentType:'text/event-stream',body:'data: '+JSON.stringify({type:'response.created',response:{id:'resp_interrupted'}})+'\n\n'});
+      if(searchMode==='hold'){await new Promise(resolve=>{releaseSearch=resolve;});return route.fulfill({status:200,contentType:'text/event-stream',body:''}).catch(()=>{});}
       if(searchMode==='unsupported')return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:{message:'web_search is not supported for this model'}})});
       if(searchMode==='search'){
         await new Promise(resolve=>{releaseSearch=resolve;});
         const source={url:'https://example.com/latest',title:'最新公告'},citation={type:'url_citation',...source,start_index:Array.from('😀 新消息。').length,end_index:Array.from(searchText).length};
-        const events=[{type:'response.output_item.added',output_index:0,item:{type:'web_search_call',id:'ws_fixture',status:'in_progress'}},
+        const events=[{type:'response.created',response:{id:'resp_web_fixture'}},{type:'response.output_item.added',output_index:0,item:{type:'web_search_call',id:'ws_fixture',status:'in_progress'}},
           {type:'response.web_search_call.searching',output_index:0},
-          {type:'response.output_item.done',output_index:0,item:{type:'web_search_call',id:'ws_fixture',status:'completed',action:{type:'search',query:'最新公告',sources:[source,{url:'javascript:alert(1)',title:'unsafe'}]}}},
+          {type:'response.output_item.done',output_index:0,item:{type:'web_search_call',id:'ws_fixture',status:'completed',action:{type:'search',queries:['最新公告','second query','third query'],sources:[source,{url:'javascript:alert(1)',title:'unsafe'}]}}},
+          {type:'response.output_item.done',output_index:2,item:{type:'web_search_call',id:'ws_failed_open',status:'failed',action:{type:'open_page',url:''},error:{code:'internal_error',message:'URL  cannot be opened'}}},
+          {type:'response.output_item.done',output_index:3,item:{type:'web_search_call',id:'ws_find',status:'completed',action:{type:'find_in_page',url:'https://example.com/latest',pattern:'limit'}}},
           {type:'response.output_item.added',output_index:1,item:{type:'message',role:'assistant',content:[]}},
           {type:'response.output_text.delta',output_index:1,content_index:0,delta:searchText},
           {type:'response.output_text.annotation.added',output_index:1,content_index:0,annotation_index:0,annotation:citation},
           {type:'response.completed',response:{output:[]}}];
-        return route.fulfill({status:200,contentType:'text/event-stream',body:events.map(e=>'data: '+JSON.stringify(e)+'\n\n').join('')});
+        return route.fulfill({status:200,headers:{'x-request-id':'req_web_fixture'},contentType:'text/event-stream',body:events.map(e=>'data: '+JSON.stringify(e)+'\n\n').join('')});
       }
       return route.fulfill({status:200,contentType:'text/event-stream',body:'data: '+JSON.stringify({type:'response.completed',response:{output:[{type:'message',role:'assistant',content:[{type:'output_text',text:'普通回答，没有搜索。'}]}]}})+'\n\n'});
     });
@@ -254,22 +258,31 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
     await page.waitForFunction(()=>document.getElementById('webSearch').disabled);for(let i=0;!releaseSearch&&i<250;i++)await new Promise(resolve=>setTimeout(resolve,20));assert.equal(typeof releaseSearch,'function');
     assert.deepEqual(searchRequests[1].tools,[{type:'web_search',external_web_access:true}]);assert.equal(searchRequests[1].tool_choice,'auto');assert.ok(searchRequests[1].include.includes('web_search_call.action.sources'));
     assert.equal(searchRequests[1].input.at(-1).content.length,1);releaseSearch();
+    for(const operation of ['search','open_page','find_in_page'])assert.ok(searchRequests[1].instructions.includes(operation));
+    assert.ok(searchRequests[1].instructions.includes('不约束已开启的公共互联网搜索工具'));assert.ok(searchRequests[1].instructions.includes('不能把未核实的细节当作已核实'));
     await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
     assert.ok((await page.evaluate(()=>window.searchNotices)).includes('正在联网搜索…'));
     assert.equal(await page.locator('.message.assistant').last().locator('.body a').getAttribute('href'),'https://example.com/latest');
     assert.equal(await page.locator('.web-sources a').count(),1);assert.equal(await page.locator('.web-sources a').getAttribute('rel'),'noreferrer noopener');
+    assert.equal(await page.locator('.web-sources').evaluate(el=>el.open),false);assert.equal(await page.locator('.web-sources a').isVisible(),false);
+    await page.locator('.web-sources summary').click();await page.waitForFunction(()=>document.querySelector('.web-sources').open);assert.equal(await page.locator('.web-sources a').isVisible(),true);
     assert.ok(!(await page.locator('.message.assistant').last().innerText()).includes('\uE200'));
     await page.evaluate(()=>{navigator.clipboard.writeText=async text=>{window.copiedSearch=text;};});await page.locator('.message.assistant').last().locator('.copy').click();
     assert.ok((await page.evaluate(()=>window.copiedSearch)).includes('[1](<https://example.com/latest>)'));
     await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.web-sources a').length===1&&!document.getElementById('send').disabled);
+    assert.equal(await page.locator('.web-sources').evaluate(el=>el.open),false);
+    await page.locator('.web-sources summary').click();await page.waitForFunction(()=>document.querySelector('.web-sources').open);
     await page.locator('#settings').click();const searchDownload=page.waitForEvent('download');await page.locator('#export').click();
     const exportedSearch=fs.readFileSync(await (await searchDownload).path(),'utf8');assert.ok(exportedSearch.includes('[1](<https://example.com/latest>)'));assert.ok(exportedSearch.includes('联网来源'));assert.ok(!exportedSearch.includes('\uE200'));
     await page.locator('#language').selectOption('en');await page.waitForFunction(()=>document.getElementById('webSearch').textContent==='Web: on');
     await page.locator('#language').selectOption('zh-CN');await page.locator('[data-close="settingsDialog"]').click();
+    assert.equal(await page.locator('.web-sources').evaluate(el=>el.open),true);
+    await page.locator('.web-sources summary').click();await page.waitForFunction(()=>!document.querySelector('.web-sources').open);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     await page.screenshot({path:path.join(root,'artifacts','sidebar-web-search.png')});
-    searchMode='plain';await page.locator('#prompt').fill('你好');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
+    searchMode='plain';await page.locator('#prompt').fill('请读一下 https://arxiv.org/abs/1706.03762 这篇论文');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
     assert.equal(searchRequests[2].tools[0].type,'web_search');assert.equal(await page.locator('.message.assistant').last().locator('.web-sources').count(),0);
+    assert.equal(searchRequests[2].input.at(-1).content.length,1);assert.equal(await page.locator('.web-sources').evaluate(el=>el.open),false);
     await page.locator('#prompt').fill('生成一个文本文件');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
     assert.deepEqual(searchRequests[3].tools.map(t=>t.type),['namespace','web_search']);
     searchMode='unsupported';await page.locator('#prompt').fill('查最新新闻');await page.locator('#send').click();
@@ -279,6 +292,44 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
     assert.equal(searchRequests[5].tools,undefined);assert.ok(!searchRequests[5].include.includes('web_search_call.action.sources'));
     await page.reload();await page.waitForFunction(()=>document.getElementById('webSearch').getAttribute('aria-pressed')==='false');
     checks.push('Web search defaults off; toggle persists and grants hosted auto search only, stays locked during generation; streamed citations/status, safe source links, history and Markdown export survive; bilingual UI, no-search replies, file tools coexist; unsupported search never auto-retries and disabling removes the tool');
+    // Exercise diagnostic storage, real downloads and controls without real credentials.
+    let diagnostics=await worker.evaluate(async()=>(await chrome.storage.local.get('webDiagnostics')).webDiagnostics);
+    assert.equal(diagnostics.records.length,4);assert.equal(diagnostics.records.at(-1).outcome,'http_error');assert.equal(diagnostics.records.at(-1).api_http_status,400);
+    const first=diagnostics.records[0];assert.equal(first.response_id,'resp_web_fixture');assert.equal(first.api_request_id,'req_web_fixture');
+    assert.equal(first.api_http_status,200);assert.equal(first.outcome,'completed');assert.equal(first.calls.length,3);
+    assert.deepEqual(first.calls[0].queries,['最新公告','second query','third query']);assert.equal(first.calls[0].sources_scope,'call_aggregate_not_per_query');
+    assert.equal(first.calls[1].url,'');assert.equal(first.calls[1].url_state,'empty');assert.equal(first.calls[1].status,'failed');assert.equal(first.calls[1].page_http_status,null);
+    assert.equal(first.calls[2].pattern,'limit');assert.equal(first.displayed_sources[0].display_number,1);
+    await page.locator('#settings').click();assert.equal(await page.locator('#recordDiagnostics').isChecked(),true);
+    await page.waitForFunction(()=>document.getElementById('diagnosticCount').textContent==='已保存请求：4');
+    await page.locator('#language').selectOption('en');await page.waitForFunction(()=>document.getElementById('exportDiagnostics').textContent==='Export diagnostics JSON');
+    assert.equal(await page.locator('#diagnosticCount').textContent(),'Saved requests: 4');
+    await page.locator('#language').selectOption('zh-CN');
+    const diagDownload=page.waitForEvent('download');await page.locator('#exportDiagnostics').click();const diagFile=await diagDownload;
+    assert.ok(diagFile.suggestedFilename().startsWith('web-diagnostics-'));const diagJSON=fs.readFileSync(await diagFile.path(),'utf8');
+    assert.equal(JSON.parse(diagJSON).records.length,4);assert.ok(!diagJSON.includes('test-fixture-token'));assert.ok(!diagJSON.includes('搜索今天的公告'));assert.ok(!diagJSON.includes('普通回答，没有搜索。'));
+    await page.locator('#recordDiagnostics').uncheck();await page.locator('[data-close="settingsDialog"]').click();
+    await page.locator('#webSearch').click();searchMode='plain';await page.locator('#prompt').fill('DIAG_PRIVATE_CHAT_SENTINEL');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
+    diagnostics=await worker.evaluate(async()=>(await chrome.storage.local.get('webDiagnostics')).webDiagnostics);assert.equal(diagnostics.records.length,4);
+    assert.equal(searchRequests.at(-1).tools[0].type,'web_search');assert.ok(!JSON.stringify(searchRequests.at(-1)).includes('local_request_id'));
+    await page.reload();await page.waitForFunction(()=>!document.getElementById('send').disabled);await page.locator('#settings').click();assert.equal(await page.locator('#recordDiagnostics').isChecked(),false);
+    await page.locator('#recordDiagnostics').check();await page.locator('[data-close="settingsDialog"]').click();
+    searchMode='empty-stream';await page.locator('#prompt').fill('查找中断测试');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent.includes('连接中断'));
+    diagnostics=await worker.evaluate(async()=>(await chrome.storage.local.get('webDiagnostics')).webDiagnostics);assert.equal(diagnostics.records.length,5);assert.equal(diagnostics.records.at(-1).outcome,'stream_interrupted');assert.equal(diagnostics.records.at(-1).response_id,'resp_interrupted');
+    searchMode='hold';releaseSearch=null;await page.locator('#prompt').fill('停止诊断测试');await page.locator('#send').click();
+    await page.waitForFunction(async()=>{const s=(await chrome.storage.local.get('webDiagnostics')).webDiagnostics;return s.records.at(-1).outcome==='started';});
+    for(let i=0;!releaseSearch&&i<250;i++)await new Promise(resolve=>setTimeout(resolve,20));assert.equal(typeof releaseSearch,'function');
+    await page.locator('#settings').click();assert.equal(await page.locator('#recordDiagnostics').isDisabled(),true);assert.equal(await page.locator('#clearDiagnostics').isDisabled(),true);
+    await page.locator('[data-close="settingsDialog"]').click();await page.locator('#stop').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent.includes('已停止生成'));releaseSearch();
+    await page.waitForFunction(async()=>{const s=(await chrome.storage.local.get('webDiagnostics')).webDiagnostics;return s.records.at(-1).outcome==='stopped';});
+    await page.reload();await page.waitForFunction(()=>!document.getElementById('send').disabled);await page.locator('#settings').click();await page.waitForFunction(()=>document.getElementById('diagnosticCount').textContent==='已保存请求：6');
+    await page.locator('#exportDiagnostics').scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.screenshot({path:path.join(root,'artifacts','sidebar-web-diagnostics.png')});
+    const preserved=await worker.evaluate(async()=>{const s=await chrome.storage.local.get(['credential','chatStore']);return JSON.stringify(s);});
+    await page.locator('#clearDiagnostics').click();await page.waitForFunction(()=>document.getElementById('diagnosticCount').textContent==='已保存请求：0');
+    assert.equal(await page.locator('#exportDiagnostics').isDisabled(),true);assert.equal(await worker.evaluate(async()=>JSON.stringify(await chrome.storage.local.get(['credential','chatStore']))),preserved);
+    await page.locator('[data-close="settingsDialog"]').click();
+    checks.push('Web diagnostic JSON download records request IDs, batch queries, missing/empty URLs and failed tools without guessing webpage status; excludes tokens and full chat; persists after reload, bilingual opt-out works without changing search payload; HTTP errors, interrupted streams and Stop are recorded; clear preserves login and history');
     const beforeDisconnect=await worker.evaluate(async()=>JSON.stringify((await chrome.storage.local.get('chatStore')).chatStore));
     await page.locator('#settings').click();
     assert.equal(await page.locator('#loginAccountLabel').isVisible(),false);

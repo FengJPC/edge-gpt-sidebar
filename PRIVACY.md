@@ -9,6 +9,16 @@
 不使用浏览器同步；聊天不与 ChatGPT 官网历史同步。
 浏览器存储隔离不等同于操作系统凭据库加密。
 
+## 联网诊断记录
+
+默认记录开启联网后的新 API 请求；可在设置中关闭、导出 JSON 或单独清空。
+当前浏览器配置保留最近 50 次请求，最多 2 MB，包括请求时间、模型和思考强度、
+API 请求/响应编号、HTTP 状态、联网调用编号/操作/状态、搜索查询、网址、
+页面内查找词、错误摘要和来源网址。它不主动保存完整聊天、网页正文、附件、请求头或令牌，
+也不把诊断送回模型或自动上传。常见凭据格式会在存储与导出时脱敏；
+搜索查询、网址和错误摘要仍可能含私人信息，自动脱敏不能保证识别所有敏感内容。
+分享导出前请检查；清空诊断不清除聊天或登录信息，已导出的文件需要自行删除。
+
 ## 对外传输
 
 登录在 OpenAI 官方页面完成。扩展与 `auth.openai.com` 交换和刷新授权，
@@ -68,3 +78,15 @@ Disconnect removes locally stored tokens while retaining account display informa
 client registrations and the installation identifier for reuse. It does not clear chats or
 revoke server-side access. Revoke access in ChatGPT settings. Uninstalling removes
 extension storage, but does not remove exported files or server-side data.
+
+Web diagnostics are enabled by default for new web-enabled API requests and
+can be disabled, exported as JSON or cleared separately in Settings. The local
+browser profile retains up to 50 requests and 2 MB, including timestamps,
+model/effort, request/response IDs, API HTTP status, web call IDs/actions/status,
+queries, URLs, find patterns, error summaries and source URLs. Raw chat, page
+bodies, attachments, headers and tokens are not intentionally recorded. Logs
+are not sent to the model or automatically uploaded. Common credentials are
+redacted at storage and export, but queries, URLs and errors may contain private
+information and automatic redaction cannot cover everything. Review before
+sharing. Clearing diagnostics preserves login and chats; exported files must
+be deleted separately.

@@ -2,8 +2,9 @@ import {t,setLanguage} from './i18n.js';
 import {activePage,browserMaterial} from './browser-material.js';
 import {AUTH, API, CALLBACK, randomToken, challenge, authorizationUrl, parseCallback, verifyIdToken, modelsFrom} from './core.js';
 import {chatAction} from './chats.js';
+import {diagnosticAction} from './web-diagnostics.js';
 import {loadRegistrations,loginRegistration,rememberRegistration,disconnectRegistration} from './registrations.js';
-let chatQueue=Promise.resolve();
+let chatQueue=Promise.resolve(),diagnosticQueue=Promise.resolve();
 let finishing = false, renewing;
 async function setup() {
   await loadRegistrations(chrome.storage.local);
@@ -87,6 +88,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) return;
   (async () => {
     if(msg.type==='activePage')return {target:await activePage()};if(msg.type==='browserMaterial')return browserMaterial(msg.mode,msg.target);if(msg.type==='chats'){const job=chatQueue.then(()=>chatAction(chrome.storage.local,msg.action));chatQueue=job.catch(()=>{});return job;}
+    if(msg.type==='webDiagnostics'){const job=diagnosticQueue.then(()=>diagnosticAction(chrome.storage.local,msg.action));diagnosticQueue=job.catch(()=>{});return job;}
     if (msg.type === 'accounts') return {registry: await loadRegistrations(chrome.storage.local)};
     if (msg.type === 'login') { await login(msg.clientId); return {}; }
     if (msg.type === 'logout') { await chrome.storage.session.remove('pending'); await disconnectRegistration(chrome.storage.local); await status('已断开本机连接；可在 ChatGPT 设置中撤销应用授权。'); return {}; }
