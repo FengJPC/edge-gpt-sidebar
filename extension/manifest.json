@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "GPT 侧边栏",
+  "version": "0.3.4",
+  "description": "在 Edge 侧栏使用自己的 ChatGPT 账号聊天，支持右键选文、按需读取资料、图片附件和 Markdown 导出。",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "unlimitedStorage",
+    "contextMenus",
+    "webNavigation",
+    "activeTab",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://auth.openai.com/*",
+    "https://api.openai.com/*",
+    "http://127.0.0.1:1455/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "打开 GPT 侧边栏"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https: http:; worker-src 'self'"
+  },
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ]
+}

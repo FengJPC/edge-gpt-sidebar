@@ -1,0 +1,20 @@
+browser-profile/
+browser-profile-test/
+browser-test-*/
+node_modules/
+*.log
+
+# 本地排障资料和打包产物不进入源码仓库
+artifacts/
+dist/
+katex-vendor-*/
+.env
+.env.*
+
+# 历史实验启动器与个人发布备忘录仅保留在本机
+/tests/live-probe.cjs
+/发布准备.md
+*.pem
+*.key
+.DS_Store
+Thumbs.db
