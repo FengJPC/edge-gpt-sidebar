@@ -3,7 +3,7 @@
 [简体中文](README.md) · [Privacy](PRIVACY.md) · [License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 An independent Microsoft Edge sidebar extension that uses your ChatGPT account.
-**Not an official OpenAI or Microsoft product.** Version 0.4.0 supports manual installation; consult Partner Center for store review and release status.
+**Not an official OpenAI or Microsoft product.** Version 0.4.1 supports manual installation; consult Partner Center for store review and release status.
 
 ## Features
 
@@ -99,9 +99,9 @@ private conversations, browser profiles or personal attachments.
 
 ## Edge Add-ons candidate
 
-Version 0.4.0 collapses source lists by default, resolves public web versus local material policy conflicts and avoids unrelated tab reads for public URL requests. Version 0.3.7 added optional web search, citations and source exports without new browser permissions. Before submitting 0.4.0, manually verify real-account search eligibility and publish the matching privacy policy. A GitHub release does not imply store certification. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.
+Version 0.4.1 collapses source lists by default, resolves public web versus local material policy conflicts and avoids unrelated tab reads for public URL requests. Version 0.3.7 added optional web search, citations and source exports without new browser permissions. Before submitting 0.4.1, manually verify real-account search eligibility and publish the matching privacy policy. A GitHub release does not imply store certification. See [submission notes](store/submission.md) and [English listing](store/listing-en-US.md). `npm run assets:store` regenerates the bundled icons from the project-owned SVG using Windows Edge.
 
-## Enhanced public reading and snapshots (0.4.0)
+## Enhanced public reading and snapshots (0.4.1)
 
 In Settings, enable **Allow direct public webpage and PDF reading** and grant HTTPS site access once in Edge. Hosted search remains available if permission is declined. With **Web: on**, the model can autonomously use `public_web.read_url`, `find_in_source` and `read_source`. Turning off Web or enhanced reading removes these tools from new requests; the latter does not automatically revoke existing site permissions (manage those in Edge).
 
@@ -114,3 +114,9 @@ Each conversation stores up to 8 immutable snapshots and 480000 UTF-16 character
 Settings lets you inspect, export TXT or clear snapshots. Previews show up to 12000 characters; TXT contains complete stored text and metadata. Clearing snapshots retains messages, citations and already-submitted context; delete the conversation to remove those local copies. Missing/evicted IDs fail explicitly instead of silently downloading replacements. Stop aborts a pending read and prevents follow-up submission. Each answer permits at most 24 enhanced tool calls and 12 model rounds (the final round has no tools), with the existing 10-file limit retained.
 
 Diagnostic `calls` remain hosted metadata only; `local_calls` contain actual public-reader request/source IDs, URLs, page HTTP status, content type, stages, truncation, lengths and PDF-page/match counts. `extracted_chars` counts text actually extracted before clipping (PDF: processed pages only). `prepared_output_chars` counts serialized tool JSON; `submitted_output_chars` means dispatched in a subsequent API request, not proven receipt/understanding by the model. `delivered_chars` remains null. Page bodies and complete tool response text are excluded. Cached reads retain their original fetch time.
+
+## Live-public test fixes in 0.4.1
+
+Static extraction now preserves available TeX annotations and common formula-image alternative text without loading images or executing scripts. It does not perform OCR or guarantee support for every math format. HTML results include at most 20 unique public HTTPS body links, with `link_count` and `links_truncated`; same-page anchors, private/literal addresses and credential-bearing URLs are excluded. Diagnostics keep counts/flags, not the complete link list.
+
+Run `node scripts/probe-public.cjs` only when you want a live public-network check (about 11 URLs in the default list). It uses a separate temporary Edge profile and runtime copy, declares only the listed test hosts, never loads real accounts or requests model APIs, and saves raw reports/screenshots only in ignored local `artifacts/`. This tests direct extension tools, not subscription-model hosted search. Redirects remain unfollowed; use a verified final public URL or hosted search for sites that redirect for language or canonicalization.

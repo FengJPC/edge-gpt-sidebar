@@ -36,9 +36,9 @@ test('Public tools require web enablement independently of file tool access',()=
 });
 test('Local diagnostics preserve actual page metadata but never invent delivery, expose bodies, or leak credentials',()=>{
  const d=diagnosticRecord({model:'fixture',generationId:'g',round:1});d.finish('completed');
- d.local({request_id:'reader-1',operation:'read_url',status:'blocked',http_status:429,requested_url:'https://example.com/?token=URL_SECRET',source_id:'public_fixture',extracted_chars:null,returned_chars:0,prepared_output_chars:400,delivery_state:'prepared',error_message:'Bearer TOKEN_SECRET',text:'BODY_SECRET',headers:{cookie:'COOKIE_SECRET'},delivered_chars:777});
+ d.local({request_id:'reader-1',operation:'read_url',status:'blocked',http_status:429,requested_url:'https://example.com/?token=URL_SECRET',source_id:'public_fixture',extracted_chars:null,returned_chars:0,prepared_output_chars:400,delivery_state:'prepared',error_message:'Bearer TOKEN_SECRET',link_count:58,links_truncated:true,links:[{url:'https://example.com/LINK_LIST_MUST_BE_OMITTED'}],text:'BODY_SECRET',headers:{cookie:'COOKIE_SECRET'},delivered_chars:777});
  d.local({...d.snapshot().local_calls[0],submitted_output_chars:400,delivery_state:'request_dispatched'});
  const log=JSON.parse(diagnosticExport({records:[d.snapshot()]})),entry=log.records[0].local_calls[0];
- assert.equal(entry.http_status,429);assert.equal(entry.extracted_chars,null);assert.equal(entry.returned_chars,0);assert.equal(entry.submitted_output_chars,400);assert.equal(entry.delivered_chars,null);assert.equal(log.records[0].outcome,'completed');
+ assert.equal(entry.link_count,58);assert.equal(entry.links_truncated,true);assert.ok(!JSON.stringify(log).includes('LINK_LIST_MUST_BE_OMITTED'));assert.equal(entry.http_status,429);assert.equal(entry.extracted_chars,null);assert.equal(entry.returned_chars,0);assert.equal(entry.submitted_output_chars,400);assert.equal(entry.delivered_chars,null);assert.equal(log.records[0].outcome,'completed');
  for(const secret of ['URL_SECRET','TOKEN_SECRET','BODY_SECRET','COOKIE_SECRET'])assert.ok(!JSON.stringify(log).includes(secret));
 });

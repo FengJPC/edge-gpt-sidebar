@@ -45,10 +45,10 @@ function sanitizeLocalCall(value){
  const out={};
  for(const key of ['request_id','call_id','operation','source_id','status','content_kind','content_type','failure_stage','error_code','delivery_state','started_at','finished_at','fetched_at'])out[key]=redact(value?.[key],150);
  for(const key of ['requested_url','final_url'])out[key]=diagnosticUrl(value?.[key]);
- for(const key of ['http_status','downloaded_bytes','extracted_chars','stored_chars','returned_chars','prepared_output_chars','submitted_output_chars','duration_ms','page_count','pages_read','match_count','offset','next_offset'])out[key]=Number.isFinite(value?.[key])&&value[key]>=0?value[key]:null;
+ for(const key of ['http_status','downloaded_bytes','extracted_chars','stored_chars','returned_chars','prepared_output_chars','submitted_output_chars','duration_ms','page_count','pages_read','match_count','offset','next_offset','link_count'])out[key]=Number.isFinite(value?.[key])&&value[key]>=0?value[key]:null;
  out.error_message=safeError({message:value?.error_message}).message;
  out.pattern=redact(value?.pattern,300);
- out.cached=value?.cached===true;out.truncated=value?.truncated===true;
+ out.cached=value?.cached===true;out.truncated=value?.truncated===true;out.links_truncated=value?.links_truncated===true;
  // Dispatch is observed locally; receipt/interpretation by the model is not exposed.
  out.delivered_chars=null;return out;
 }

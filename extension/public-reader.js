@@ -2,15 +2,35 @@ import {publicUrl,TEXT_LIMIT} from './public-sources.js';
 import {pdfContent} from './pdf-reader.js';
 const MAX_BYTES=20_000_000;
 function failure(status,stage,code,message){return {status,failure_stage:stage,error_code:code,error_message:message};}
-export function htmlContent(html){
+export function htmlContent(html,baseURL){
  // Parse an inert, detached document. Remove resource-bearing attributes/tags first;
  // never attach this tree, execute scripts, load page assets, or submit forms.
  const inert=html.replace(/<(script|style|iframe|object|embed|noscript)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,' ')
-  .replace(/<(img|link|source|video|audio|input)\b[^>]*>/gi,' ')
-  .replace(/\s(?:src|srcset|poster|background|data|href)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,'');
+  .replace(/<(link|source|video|audio|input)\b[^>]*>/gi,' ')
+  .replace(/\s(?:xlink:)?href(\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))/gi,' data-public-href$1')
+  .replace(/\s(?:src|srcset|poster|background|data)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,'');
  const doc=new DOMParser().parseFromString(inert,'text/html'),title=(doc.title||'').trim().slice(0,300);
+ const formula=tex=>' \\('+tex.trim()+'\\) ';
+ // Wikipedia provides a hidden MathML alternative AND an aria-hidden visible
+ // formula image. Preserve one TeX representation before removing hidden nodes.
+ for(const node of doc.querySelectorAll('.mwe-math-element')){
+  const tex=node.querySelector('annotation[encoding="application/x-tex"]')?.textContent||node.querySelector('img[alt]')?.getAttribute('alt');
+  if(tex?.trim())node.replaceWith(formula(tex));
+ }
+ for(const node of doc.querySelectorAll('math')){
+  const tex=node.querySelector('annotation[encoding="application/x-tex"]')?.textContent;
+  if(tex?.trim())node.replaceWith(formula(tex));
+ }
+ for(const node of doc.querySelectorAll('img')){
+  const alt=node.getAttribute('alt')||'',math=/math|latex/i.test(node.className)||/^\{?\\displaystyle\b/.test(alt);
+  node.replaceWith(math&&alt.trim()?formula(alt):'');
+ }
  for(const node of doc.querySelectorAll('form,nav,header,footer,aside,[hidden],[aria-hidden="true"],[style*="display:none"],[style*="display: none"]'))node.remove();
  const root=doc.querySelector('article')||doc.querySelector('main,[role="main"]')||doc.body;
+ const links=[],seen=new Set();let linkCount=0;
+ for(const node of root.querySelectorAll('a[data-public-href]')){
+  try{const url=publicUrl(new URL(node.getAttribute('data-public-href'),baseURL).href);if(url===publicUrl(baseURL)||seen.has(url)||url.length>2000)continue;seen.add(url);linkCount++;if(links.length<20)links.push({url,title:(node.textContent||node.getAttribute('title')||url).replace(/\s+/g,' ').trim().slice(0,120)});}catch{}
+ }
  for(const br of root.querySelectorAll('br'))br.replaceWith('\n');
  for(const block of root.querySelectorAll('p,div,section,h1,h2,h3,h4,li,tr,pre'))block.append('\n');
  const text=(root.textContent||'').replace(/[ \t\r\f]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
@@ -20,7 +40,7 @@ export function htmlContent(html){
  const errorPage=/^(?:Internal Server Error|Internal Error|Access Denied|Too Many Requests|Service Unavailable|Forbidden)$/i.test(title)||/^(?:Internal Error|Access Denied|Forbidden|Too Many Requests)\s*$/i.test(text);
  const shell=!!text&&text.length<300&&/enable javascript|javascript (?:is disabled|is turned off)|requires javascript|turn on javascript/i.test(text);
  const kind=captcha?'captcha':errorPage?'error_page':shell?'page_shell':text?'article':'unknown';
- return {title,text,content_kind:kind,extracted_chars:text.length,truncated:text.length>TEXT_LIMIT,
+ return {title,text,links,link_count:linkCount,links_truncated:linkCount>links.length,content_kind:kind,extracted_chars:text.length,truncated:text.length>TEXT_LIMIT,
   ...(captcha?failure('blocked','extract','captcha','The response asks for human verification; automatic retries are paused.'):
    errorPage?failure('fetch_error','extract','error_page','The server returned an error page.'):
    shell?failure('partial','extract','page_shell','Only a page shell or JavaScript notice was extracted.'):
@@ -47,7 +67,7 @@ export async function readPublic(value,{signal,fetcher=fetch,hasPermission=()=>c
   const bytes=new Uint8Array(meta.downloaded_bytes);let at=0;for(const chunk of chunks){bytes.set(chunk,at);at+=chunk.length;}
   stage='extract';let content;
   if(pdf)content={...await pdfContent(bytes,{signal:controller.signal}),content_kind:'pdf',status:'success',failure_stage:null,error_code:null,error_message:null};
-  else if(html)content=htmlContent(new TextDecoder().decode(bytes));
+  else if(html)content=htmlContent(new TextDecoder().decode(bytes),meta.final_url||meta.requested_url);
   else{const text=new TextDecoder().decode(bytes).trim();content={text,content_kind:'plain_text',extracted_chars:text.length,truncated:text.length>TEXT_LIMIT,...(text?{status:'success',failure_stage:null,error_code:null,error_message:null}:failure('parse_error','extract','empty_text','The response contains no readable text.'))};}
   if(controller.signal.aborted)throw controller.signal.reason;
   if(content.truncated&&content.status==='success')content.status='partial';

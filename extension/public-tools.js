@@ -21,7 +21,7 @@ export async function executePublic(chat,call,{signal,onDiagnostic=()=>{},reader
  }catch(e){if(signal?.aborted){onDiagnostic({...diag,status:'stopped',failure_stage:'interrupted',error_code:'AbortError',finished_at:new Date().toISOString(),duration_ms:Date.now()-start});throw e;}
   result={status:'internal_error',content_kind:'unknown',failure_stage:operation==='read_url'?'validate':'arguments',error_code:e.name||'unknown',error_message:String(e.message).slice(0,500)};
  }
- Object.assign(diag,...['source_id','fetched_at','requested_url','final_url','http_status','content_type','status','content_kind','extracted_chars','stored_chars','truncated','failure_stage','error_code','error_message','cached','downloaded_bytes','page_count','pages_read','match_count','pattern','offset','next_offset'].map(key=>result[key]===undefined?{}:{[key]:result[key]}));
+ Object.assign(diag,...['source_id','fetched_at','requested_url','final_url','http_status','content_type','status','content_kind','extracted_chars','stored_chars','truncated','failure_stage','error_code','error_message','cached','downloaded_bytes','page_count','pages_read','match_count','pattern','offset','next_offset','link_count','links_truncated'].map(key=>result[key]===undefined?{}:{[key]:result[key]}));
  diag.returned_chars=typeof result.text==='string'?result.text.length:Array.isArray(result.matches)?result.matches.reduce((n,m)=>n+m.text.length,0):null;
  diag.finished_at=new Date().toISOString();diag.duration_ms=Date.now()-start;diag.prepared_output_chars=JSON.stringify(result).length;diag.delivery_state='prepared';onDiagnostic(diag);
  return {result,diagnostic:diag};
