@@ -4,7 +4,7 @@
 
 在 Microsoft Edge 侧栏中使用自己的 ChatGPT 账号聊天，支持右键选文、按需读取网页/PDF、图片与文件草稿、LaTeX 公式和 Markdown 导出。
 
-**这是第三方个人项目，不是 OpenAI 或 Microsoft 官方产品。** 当前版本 **0.4.2**，可手动加载安装；商店审核和发行进度以 Partner Center 为准。
+**这是第三方个人项目，不是 OpenAI 或 Microsoft 官方产品。** 当前版本 **0.4.3**，可手动加载安装；商店审核和发行进度以 Partner Center 为准。
 
 ## 功能
 
@@ -101,7 +101,7 @@ npm test
 npm run package
 ```
 
-`npm test` 覆盖授权登记复用、账号隔离、聊天和联网引用处理，不需要真实账号。构建产物是 `dist/gpt-sidebar-0.4.2.zip`，仅含扩展运行文件与许可说明。
+`npm test` 覆盖授权登记复用、账号隔离、聊天和联网引用处理，不需要真实账号。构建产物是 `dist/gpt-sidebar-0.4.3.zip`，仅含扩展运行文件与许可说明。
 
 Windows 中安装 Microsoft Edge 后运行 `npm run test:browser`。可通过环境变量 `EDGE_EXECUTABLE_PATH` 指定浏览器路径。测试使用独立临时配置、模拟模型请求和测试素材，不接触日常浏览器账号。
 
@@ -136,3 +136,12 @@ Windows 中安装 Microsoft Edge 后运行 `npm run test:browser`。可通过环
 开发验证：`npm run test:concurrency` 使用隔离 Edge 中的两个真实页面，模拟模型与存储时序，覆盖旧窗口保存、冲突副本、重开、流式 DOM 稳定和上下文预算。共享逻辑维护方式见 [SHARED.md](SHARED.md)。
 
 0.4.2 还修复了授权最早刷新时间：允许刷新前复用仍有效的令牌；已过期但尚不允许刷新时显示明确错误；刷新后保存新的时间约束。
+
+## 0.4.3 授权恢复
+
+- 将凭据读取也纳入共享刷新流程，避免多个窗口使用延迟读到的旧刷新令牌再次请求。
+- 授权失败区分登录换码和令牌刷新，仅识别的终止错误会清除失效令牌；已有账号登记与聊天保留。未知 HTTP 400、网络错误和临时服务故障不会直接清除凭据。
+- 设置中的“导出授权诊断”只导出最近一次 HTTP 授权错误的时间、阶段、状态码和已知错误类别，不导出响应正文、账号、授权码或令牌。未知错误类别显示为 unrecognized_error。
+- 已加载本项目 extension 目录的用户，在 edge://extensions 中重新加载扩展后生效。先查看“刷新模型”的结果；若提示刷新凭据失效，再用原有账号登记重新登录，不必卸载或清空数据。
+
+该版本的自动化测试使用合成凭据；某次实际 HTTP 400 的根因仍需以该次授权诊断为准。恢复规则参考 [OpenAI Errors and recovery](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery)。

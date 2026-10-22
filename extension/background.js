@@ -1,4 +1,5 @@
 import {canUseToken} from './token-policy.js';
+import {authorizationError} from './auth-errors.js';
 import {t,setLanguage} from './i18n.js';
 import {activePage,browserMaterial} from './browser-material.js';
 import {AUTH, API, CALLBACK, randomToken, challenge, authorizationUrl, parseCallback, verifyIdToken, modelsFrom} from './core.js';
@@ -7,6 +8,10 @@ import {diagnosticAction} from './web-diagnostics.js';
 import {loadRegistrations,loginRegistration,rememberRegistration,disconnectRegistration} from './registrations.js';
 let chatQueue=Promise.resolve(),diagnosticQueue=Promise.resolve();
 let finishing = false, renewing;
+// Serialize credential writes with logout/login so an old refresh cannot erase
+// or overwrite a newly connected account between its read and write.
+let authQueue = Promise.resolve();
+function authMutation(action) { const job = authQueue.then(action); authQueue = job.catch(()=>{}); return job; }
 async function setup() {
   await loadRegistrations(chrome.storage.local);
   setLanguage((await chrome.storage.local.get('uiPrefs')).uiPrefs?.language);
@@ -28,7 +33,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 async function status(text) { await chrome.storage.local.set({authStatus: text}); }
 async function tokenRequest(fields) {
   const r = await fetch(AUTH + '/api/accounts/oauth/token', {method: 'POST', body: new URLSearchParams(fields), credentials: 'omit', signal: AbortSignal.timeout(30000)});
-  if (!r.ok) throw new Error('官方授权接口返回 HTTP ' + r.status + '。请重新登录；不会自动重放授权请求。');
+  if (!r.ok) throw await authorizationError(r, fields.grant_type);
   return r.json();
 }
 async function login(selected) {
@@ -62,25 +67,42 @@ chrome.webNavigation.onBeforeNavigate.addListener(async details => {
     const tokens = await tokenRequest({grant_type: 'authorization_code', client_id: callback.clientId, code: callback.code, code_verifier: pending.verifier, redirect_uri: CALLBACK, resource: API});
     const identity = await verifyIdToken(tokens.id_token, callback.clientId, pending.nonce);
     if (pending.subject && pending.subject !== identity.subject) throw new Error('所选应用登记属于其他账号，请选择对应账号重新登录。');
-    const old = (await chrome.storage.local.get('credential')).credential;
-    if (old && (old.subject !== identity.subject || old.clientId !== callback.clientId)) throw new Error('重新登录的账号与原账号不一致。请先退出，再连接新账号。');
     if (!String(tokens.scope || '').split(' ').includes('chatgpt.tokens.use.direct')) throw new Error('登录成功，但没有授权使用 ChatGPT 套餐。');
     if (!tokens.access_token || !tokens.refresh_token || !Number.isFinite(tokens.expires_in)) throw new Error('官方授权返回不完整。');
-    await rememberRegistration(chrome.storage.local, {...identity, clientId: callback.clientId});
-    await chrome.storage.local.set({credential: {...identity, clientId: callback.clientId, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, expiresAt: Date.now() + tokens.expires_in * 1000, earliestRefreshAt: tokens.earliest_refresh_at || 0}, authStatus: '账号已连接，可以选择模型并聊天。'});
-  } catch (e) { await status('连接未完成：' + e.message); }
+    await authMutation(async () => {
+      const old = (await chrome.storage.local.get('credential')).credential;
+      if (old && (old.subject !== identity.subject || old.clientId !== callback.clientId)) throw new Error('重新登录的账号与原账号不一致。请先退出，再连接新账号。');
+      await rememberRegistration(chrome.storage.local, {...identity, clientId: callback.clientId});
+      await chrome.storage.local.set({credential: {...identity, clientId: callback.clientId, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, expiresAt: Date.now() + tokens.expires_in * 1000, earliestRefreshAt: tokens.earliest_refresh_at || 0}, authStatus: '账号已连接，可以选择模型并聊天。'});
+    });
+  } catch (e) { if(e.diagnostic)await chrome.storage.local.set({authDiagnostic:e.diagnostic}); await status('连接未完成：' + e.message); }
   finally { finishing = false; }
 }, {url: [{urlPrefix: CALLBACK}]});
 async function accessToken() {
-  const {credential: c} = await chrome.storage.local.get('credential');
-  if (!c) throw new Error('请先连接 ChatGPT 账号。');
-  if (canUseToken(c)) return c.accessToken;
+  // Acquire the shared flight BEFORE reading storage. Otherwise a delayed read
+  // may start a second refresh with an already rotated, one-use refresh token.
   if (!renewing) renewing = (async () => {
-    const t = await tokenRequest({grant_type: 'refresh_token', client_id: c.clientId, refresh_token: c.refreshToken, resource: API});
+    const {credential: c} = await chrome.storage.local.get('credential');
+    if (!c) throw new Error('请先连接 ChatGPT 账号。');
+    if (canUseToken(c)) return c.accessToken;
+    let t;
+    try { t = await tokenRequest({grant_type: 'refresh_token', client_id: c.clientId, refresh_token: c.refreshToken, resource: API}); }
+    catch(e) {
+      await authMutation(async () => {
+        const current = (await chrome.storage.local.get('credential')).credential;
+        if (!current || current.refreshToken !== c.refreshToken) return;
+        if (e.diagnostic) await chrome.storage.local.set({authDiagnostic:e.diagnostic});
+        if (e.unusable) await disconnectRegistration(chrome.storage.local);
+        await status(e.message);
+      });
+      throw e;
+    }
     if (!t.access_token || !t.refresh_token || !Number.isFinite(t.expires_in) || (t.scope && !t.scope.split(' ').includes('chatgpt.tokens.use.direct'))) throw new Error('刷新授权返回不完整，请重新登录。');
-    const current = (await chrome.storage.local.get('credential')).credential;
-    if (!current || current.refreshToken !== c.refreshToken) throw new Error('账号已更改，已取消保存刷新结果。');
-    await chrome.storage.local.set({credential: {...c, accessToken: t.access_token, refreshToken: t.refresh_token, expiresAt: Date.now() + t.expires_in * 1000, earliestRefreshAt: t.earliest_refresh_at || 0}});
+    await authMutation(async () => {
+      const current = (await chrome.storage.local.get('credential')).credential;
+      if (!current || current.refreshToken !== c.refreshToken) throw new Error('账号已更改，已取消保存刷新结果。');
+      await chrome.storage.local.set({credential: {...c, accessToken: t.access_token, refreshToken: t.refresh_token, expiresAt: Date.now() + t.expires_in * 1000, earliestRefreshAt: t.earliest_refresh_at || 0}, authStatus:'账号已连接，可以选择模型并聊天。'});
+    });
     return t.access_token;
   })().finally(() => { renewing = null; });
   return renewing;
@@ -92,7 +114,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if(msg.type==='webDiagnostics'){const job=diagnosticQueue.then(()=>diagnosticAction(chrome.storage.local,msg.action));diagnosticQueue=job.catch(()=>{});return job;}
     if (msg.type === 'accounts') return {registry: await loadRegistrations(chrome.storage.local)};
     if (msg.type === 'login') { await login(msg.clientId); return {}; }
-    if (msg.type === 'logout') { await chrome.storage.session.remove('pending'); await disconnectRegistration(chrome.storage.local); await status('已断开本机连接；可在 ChatGPT 设置中撤销应用授权。'); return {}; }
+    if (msg.type === 'logout') { await chrome.storage.session.remove('pending'); await authMutation(async()=>{await disconnectRegistration(chrome.storage.local); await status('已断开本机连接；可在 ChatGPT 设置中撤销应用授权。');}); return {}; }
     if (msg.type === 'token') return {token: await accessToken()};
     if (msg.type === 'models') {
       const r = await fetch(API + '/models', {headers: {Authorization: 'Bearer ' + await accessToken()}, signal: AbortSignal.timeout(30000)});

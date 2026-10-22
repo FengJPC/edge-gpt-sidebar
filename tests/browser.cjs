@@ -354,6 +354,24 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
     await page.locator('#loginAccount').selectOption('oaiapp_browser_fixture');
     await page.screenshot({path:path.join(root,'artifacts','sidebar-registered-login.png')});
     checks.push('Disconnect deletes tokens, preserves conversation and registration; saved account remains the default after reload, explicit new registration and bilingual choices work');
+    await worker.evaluate(async()=>{
+      const previousFetch=globalThis.fetch;
+      globalThis.fetch=(url,options)=>String(url).endsWith('/api/accounts/oauth/token')
+        ?Promise.resolve(new Response(JSON.stringify({error:'invalid_grant',error_description:'SECRET-REFRESH-ECHO'}),{status:400}))
+        :previousFetch(url,options);
+      await chrome.storage.local.set({credential:{clientId:'oaiapp_browser_fixture',subject:'fixture-user',accessToken:'FAKE-EXPIRED',refreshToken:'FAKE-REFRESH',expiresAt:0}});
+    });
+    await page.waitForFunction(()=>document.getElementById('authStatus').textContent.includes('invalid_grant')&&document.getElementById('send').disabled);
+    assert.equal(await page.locator('#loginAccount').inputValue(),'oaiapp_browser_fixture');
+    const authDownloadPromise=page.waitForEvent('download');
+    await page.locator('#exportAuthDiagnostic').click();
+    const authDownload=await authDownloadPromise;
+    const authReport=JSON.parse(fs.readFileSync(await authDownload.path(),'utf8'));
+    assert.equal(authReport.lastError.phase,'refresh');assert.equal(authReport.lastError.httpStatus,400);assert.equal(authReport.lastError.code,'invalid_grant');
+    assert.ok(!JSON.stringify(authReport).includes('FAKE-'));assert.ok(!JSON.stringify(authReport).includes('SECRET'));
+    assert.equal(await worker.evaluate(async()=>JSON.stringify((await chrome.storage.local.get('chatStore')).chatStore)),beforeDisconnect);
+    await page.screenshot({path:path.join(root,'artifacts','auth-recovery.png')});
+    checks.push('Terminal OAuth 400 stops token reuse, retains registered account and chats, and exports only safe error metadata');
     assert.deepEqual(errors,[]);
     fs.writeFileSync(path.join(root,'artifacts','browser-report.json'),JSON.stringify({passed:true,checks,errors},null,2));
     console.log(JSON.stringify({passed:true,checks,errors},null,2));

@@ -86,14 +86,14 @@ test('real background routes reuse clients after logout, allow explicit new acco
   globalThis.fetch=async(url,options)=>{
     if(url===AUTH+'/.well-known/jwks.json')return {ok:true,json:async()=>({keys:[jwk]})};
     assert.equal(url,AUTH+'/api/accounts/oauth/token');
-    if(options.body.get('grant_type')==='refresh_token'){refreshes++;await new Promise(r=>setTimeout(r,10));return {ok:true,json:async()=>({access_token:'FAKE-REFRESHED',refresh_token:'FAKE-ROTATED',scope:'chatgpt.tokens.use.direct',expires_in:30,earliest_refresh_at:new Date(Date.now()+20000).toISOString()})};}
+    if(options.body.get('grant_type')==='refresh_token'){refreshes++;await new Promise(r=>setTimeout(r,10));if(refreshFailure)return new Response(JSON.stringify(refreshFailure.body),{status:refreshFailure.status});return {ok:true,json:async()=>({access_token:'FAKE-REFRESHED',refresh_token:'FAKE-ROTATED',scope:'chatgpt.tokens.use.direct',expires_in:30,earliest_refresh_at:new Date(Date.now()+20000).toISOString()})};}
     const clientId=options.body.get('client_id');
     const pending=callbackPending;
     const parts=[b64url(new TextEncoder().encode(JSON.stringify({alg:'RS256',kid:'fixture'}))),b64url(new TextEncoder().encode(JSON.stringify({iss:AUTH,aud:clientId,nonce:pending.nonce,sub:subject,email:account.email,exp:Math.floor(Date.now()/1000)+3600})))];
     const signature=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',pair.privateKey,new TextEncoder().encode(parts.join('.')));
     return {ok:true,json:async()=>({access_token:'FAKE-ACCESS-NEW',refresh_token:'FAKE-REFRESH-NEW',id_token:parts.join('.')+'.'+b64url(signature),scope:'openid chatgpt.tokens.use.direct',expires_in:3600})};
   };
-  let callbackPending,refreshes=0;
+  let callbackPending,refreshes=0,refreshFailure;
   const rpc=message=>new Promise(resolve=>messageHandler(message,{id:'fixture',url:'chrome-extension://fixture/sidepanel.html'},resolve));
   async function finish(clientId) {
     callbackPending=session.state.pending;
@@ -136,5 +136,41 @@ test('real background routes reuse clients after logout, allow explicit new acco
     const publicAccounts=await rpc({type:'accounts'});
     assert.equal(publicAccounts.ok,true);
     assert.ok(!JSON.stringify(publicAccounts).includes('FAKE-'));
+    // A 400 alone must not log users out. Only confirmed terminal refresh codes do.
+    await local.set({credential:{...local.state.credential,expiresAt:0,earliestRefreshAt:0},chatStore:{preserved:true}});
+    for(const failure of [{status:503,body:{error:'server_error'}},{status:400,body:{detail:'unknown error'}}]){
+      refreshFailure=failure;const before=refreshes;
+      assert.equal((await rpc({type:'token'})).ok,false);
+      assert.equal(refreshes,before+1);assert.ok(local.state.credential);
+    }
+    refreshFailure={status:400,body:{error:{code:'refresh_token_reused',message:'SECRET-DO-NOT-SAVE'}}};
+    const before=refreshes;
+    const failures=await Promise.all([rpc({type:'token'}),rpc({type:'token'})]);
+    assert.ok(failures.every(r=>!r.ok&&r.error.includes('refresh_token_reused')));
+    assert.equal(refreshes,before+1);assert.equal(local.state.credential,undefined);
+    assert.deepEqual(local.state.chatStore,{preserved:true});
+    assert.equal(local.state.accountRegistrations.selected,account.clientId);
+    assert.ok(!JSON.stringify(local.state).includes('SECRET-DO-NOT-SAVE'));
+    assert.equal(local.state.authDiagnostic.phase,'refresh');
+    assert.equal((await rpc({type:'token'})).ok,false);assert.equal(refreshes,before+1);
+    refreshFailure=null;
+    await rpc({type:'login'});assert.equal(lastAuthorization.searchParams.get('client_id'),account.clientId);
+    await finish(account.clientId);assert.equal(local.state.credential.subject,'user-a');
+    // Delay a second storage snapshot until the first refresh has completed.
+    // The old implementation then replayed the already consumed refresh token.
+    await local.set({credential:{...local.state.credential,expiresAt:0,earliestRefreshAt:0}});
+    const originalGet=local.get.bind(local),refreshCount=refreshes;
+    let initialReads=0,releaseRead;
+    const delayedRead=new Promise(resolve=>{releaseRead=resolve;});
+    local.get=async keys=>{
+      const snapshot=await originalGet(keys);
+      if(keys==='credential'&&refreshes===refreshCount&&++initialReads===2)await delayedRead;
+      return snapshot;
+    };
+    try {
+      const first=rpc({type:'token'}),second=rpc({type:'token'});
+      assert.equal((await first).ok,true);releaseRead();assert.equal((await second).ok,true);
+      assert.equal(refreshes,refreshCount+1,'concurrent callers must share storage read and refresh');
+    } finally {releaseRead();local.get=originalGet;}
   } finally {globalThis.chrome=previousChrome;globalThis.fetch=previousFetch;}
 });
