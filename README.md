@@ -4,7 +4,7 @@
 
 在 Microsoft Edge 侧栏中使用自己的 ChatGPT 账号聊天，支持右键选文、按需读取网页/PDF、图片与文件草稿、LaTeX 公式和 Markdown 导出。
 
-**这是第三方个人项目，不是 OpenAI 或 Microsoft 官方产品。** 当前版本 **0.4.3**，可手动加载安装；商店审核和发行进度以 Partner Center 为准。
+**这是第三方个人项目，不是 OpenAI 或 Microsoft 官方产品。** 当前版本 **0.5.0**，可手动加载安装；商店审核和发行进度以 Partner Center 为准。
 
 ## 功能
 
@@ -101,7 +101,7 @@ npm test
 npm run package
 ```
 
-`npm test` 覆盖授权登记复用、账号隔离、聊天和联网引用处理，不需要真实账号。构建产物是 `dist/gpt-sidebar-0.4.3.zip`，仅含扩展运行文件与许可说明。
+`npm test` 覆盖授权登记复用、账号隔离、聊天和联网引用处理，不需要真实账号。构建产物是 `dist/gpt-sidebar-0.5.0.zip`，仅含扩展运行文件与许可说明。
 
 Windows 中安装 Microsoft Edge 后运行 `npm run test:browser`。可通过环境变量 `EDGE_EXECUTABLE_PATH` 指定浏览器路径。测试使用独立临时配置、模拟模型请求和测试素材，不接触日常浏览器账号。
 
@@ -145,3 +145,10 @@ Windows 中安装 Microsoft Edge 后运行 `npm run test:browser`。可通过环
 - 已加载本项目 extension 目录的用户，在 edge://extensions 中重新加载扩展后生效。先查看“刷新模型”的结果；若提示刷新凭据失效，再用原有账号登记重新登录，不必卸载或清空数据。
 
 该版本的自动化测试使用合成凭据；某次实际 HTTP 400 的根因仍需以该次授权诊断为准。恢复规则参考 [OpenAI Errors and recovery](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery)。
+
+## 0.5.0 聊天存储与可靠性
+
+- 聊天改为轻量索引和每个对话独立的记录；日常草稿保存仅处理当前对话，历史正文按需加载，全文搜索仍保留。多窗口继续使用版本检查、三方合并和冲突副本。
+- 首次打开自动迁移旧聊天，核对正文后才切换索引，并保留完整的本机升级备份（扩展存储键 chatLegacyBackup）。备份可能包含之后删除的旧对话；不会上传。不要直接降级使用旧版写入新存储。
+- 生成中的文字通常每 250 毫秒保存一次，等待期间每 5 秒保存存活信息；关闭窗口会尝试保存并停止。浏览器支持 Web Locks 时可识别生成窗口是否仍存在，不支持时保守等待 2 分钟。突然断电仍可能损失最近尚未落盘的片段。
+- 修复断开连接后迟到的登录结果重新连接账号，以及增强网页读取拼接表格单元格的问题。

@@ -7,7 +7,7 @@ import {chatAction} from './chats.js';
 import {diagnosticAction} from './web-diagnostics.js';
 import {loadRegistrations,loginRegistration,rememberRegistration,disconnectRegistration} from './registrations.js';
 let chatQueue=Promise.resolve(),diagnosticQueue=Promise.resolve();
-let finishing = false, renewing;
+let finishing = false, renewing, authEpoch = 0;
 // Serialize credential writes with logout/login so an old refresh cannot erase
 // or overwrite a newly connected account between its read and write.
 let authQueue = Promise.resolve();
@@ -37,46 +37,60 @@ async function tokenRequest(fields) {
   return r.json();
 }
 async function login(selected) {
+  const epoch=++authEpoch;
   const registration = await loginRegistration(chrome.storage.local, selected);
+  if(epoch!==authEpoch)return;
   const saved = await chrome.storage.local.get(['hostId', 'credential']);
   const hostId = saved.hostId || 'urn:uuid:' + crypto.randomUUID();
   await chrome.storage.local.set({hostId});
   const verifier = randomToken();
   const pending = {state: randomToken(), nonce: randomToken(), verifier, challenge: await challenge(verifier), created: Date.now(), clientId: registration?.clientId, subject: registration?.subject, loginHint: registration?.email};
   const tab = await chrome.tabs.create({url: chrome.runtime.getURL('login-start.html')});
+  if(epoch!==authEpoch)return;
   pending.tabId = tab.id;
-  await chrome.storage.session.set({pending});
-  await status('请在刚打开的 OpenAI 官方页面完成登录和授权。');
-  await chrome.tabs.update(tab.id, {url: authorizationUrl(pending, hostId)});
+  await authMutation(async()=>{
+    if(epoch!==authEpoch)return;
+    await chrome.storage.session.set({pending});
+    if(epoch!==authEpoch)return;
+    await status('请在刚打开的 OpenAI 官方页面完成登录和授权。');
+    if(epoch!==authEpoch)return;
+    await chrome.tabs.update(tab.id, {url: authorizationUrl(pending, hostId)});
+  });
 }
 chrome.webNavigation.onBeforeNavigate.addListener(async details => {
   if (details.frameId !== 0) return;
+  const epoch=authEpoch;
   const {pending} = await chrome.storage.session.get('pending');
-  if (!pending || details.tabId !== pending.tabId || finishing) return;
+  if (epoch!==authEpoch || !pending || details.tabId !== pending.tabId || finishing===pending.state) return;
   let callback;
   try { callback = parseCallback(details.url, pending, details.tabId); } catch (e) {
     await chrome.storage.session.remove('pending'); await status(e.message); return;
   }
   if (!callback) return;
-  finishing = true;
+  finishing = pending.state;
   await chrome.storage.session.remove('pending');
   try {
     // Remove the authorization code from the address bar before network work.
     await chrome.tabs.update(details.tabId, {url: chrome.runtime.getURL('callback.html')});
+    if(epoch!==authEpoch)return;
     await status('已收到登录回调，正在验证官方授权。');
     const tokens = await tokenRequest({grant_type: 'authorization_code', client_id: callback.clientId, code: callback.code, code_verifier: pending.verifier, redirect_uri: CALLBACK, resource: API});
+    if(epoch!==authEpoch)return;
     const identity = await verifyIdToken(tokens.id_token, callback.clientId, pending.nonce);
     if (pending.subject && pending.subject !== identity.subject) throw new Error('所选应用登记属于其他账号，请选择对应账号重新登录。');
     if (!String(tokens.scope || '').split(' ').includes('chatgpt.tokens.use.direct')) throw new Error('登录成功，但没有授权使用 ChatGPT 套餐。');
     if (!tokens.access_token || !tokens.refresh_token || !Number.isFinite(tokens.expires_in)) throw new Error('官方授权返回不完整。');
     await authMutation(async () => {
+      if(epoch!==authEpoch)return;
       const old = (await chrome.storage.local.get('credential')).credential;
+      if(epoch!==authEpoch)return;
       if (old && (old.subject !== identity.subject || old.clientId !== callback.clientId)) throw new Error('重新登录的账号与原账号不一致。请先退出，再连接新账号。');
       await rememberRegistration(chrome.storage.local, {...identity, clientId: callback.clientId});
+      if(epoch!==authEpoch)return;
       await chrome.storage.local.set({credential: {...identity, clientId: callback.clientId, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, expiresAt: Date.now() + tokens.expires_in * 1000, earliestRefreshAt: tokens.earliest_refresh_at || 0}, authStatus: '账号已连接，可以选择模型并聊天。'});
     });
-  } catch (e) { if(e.diagnostic)await chrome.storage.local.set({authDiagnostic:e.diagnostic}); await status('连接未完成：' + e.message); }
-  finally { finishing = false; }
+  } catch (e) { if(epoch!==authEpoch)return; if(e.diagnostic)await chrome.storage.local.set({authDiagnostic:e.diagnostic}); await status('连接未完成：' + e.message); }
+  finally { if(finishing===pending.state)finishing = false; }
 }, {url: [{urlPrefix: CALLBACK}]});
 async function accessToken() {
   // Acquire the shared flight BEFORE reading storage. Otherwise a delayed read
@@ -114,7 +128,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if(msg.type==='webDiagnostics'){const job=diagnosticQueue.then(()=>diagnosticAction(chrome.storage.local,msg.action));diagnosticQueue=job.catch(()=>{});return job;}
     if (msg.type === 'accounts') return {registry: await loadRegistrations(chrome.storage.local)};
     if (msg.type === 'login') { await login(msg.clientId); return {}; }
-    if (msg.type === 'logout') { await chrome.storage.session.remove('pending'); await authMutation(async()=>{await disconnectRegistration(chrome.storage.local); await status('已断开本机连接；可在 ChatGPT 设置中撤销应用授权。');}); return {}; }
+    if (msg.type === 'logout') { ++authEpoch; await authMutation(async()=>{await chrome.storage.session.remove('pending');await disconnectRegistration(chrome.storage.local); await status('已断开本机连接；可在 ChatGPT 设置中撤销应用授权。');}); return {}; }
     if (msg.type === 'token') return {token: await accessToken()};
     if (msg.type === 'models') {
       const r = await fetch(API + '/models', {headers: {Authorization: 'Bearer ' + await accessToken()}, signal: AbortSignal.timeout(30000)});

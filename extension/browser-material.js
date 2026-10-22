@@ -4,6 +4,7 @@ export function extractPage(){
  const originals=[...root.querySelectorAll('*')],copies=[...copy.querySelectorAll('*')];
  for(let i=0;i<originals.length;i++){const style=getComputedStyle(originals[i]);if(style.display==='none'||style.visibility==='hidden')copies[i].remove();}
  copy.querySelectorAll('script,style,noscript,nav,header,footer,form,input,textarea,select,button,[hidden],[aria-hidden="true"],[contenteditable="true"]').forEach(n=>n.remove());
+ copy.querySelectorAll('td,th').forEach(n=>n.append(document.createTextNode(' | ')));
  copy.querySelectorAll('p,div,li,h1,h2,h3,tr,section').forEach(n=>n.append(document.createTextNode('\n')));
  const text=(copy.innerText||copy.textContent||'').replace(/\n[ \t]+/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
  return {name:document.title||'当前网页',url:location.href,text:text.slice(0,120000)+(text.length>120000?'\n[已截断，仅提供前 120000 字符]':''),pdf:document.contentType==='application/pdf'};

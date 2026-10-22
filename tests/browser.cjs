@@ -150,12 +150,12 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
     await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='已停止生成');
     assert.equal(await page.locator('#send').isDisabled(),false);assert.equal(await page.locator('#effort').isDisabled(),false);
     await held.abort().catch(()=>{});assert.equal(stalledRequests,1);
-    await worker.evaluate(async()=>{const {chatStore:s}=await chrome.storage.local.get('chatStore');const c=s.chats.find(c=>c.id===s.active);c.messages.push({role:'user',content:'中断测试'},{role:'assistant',content:'',pending:true});await chrome.storage.local.set({chatStore:s});});
+    await worker.evaluate(async()=>{const {chatStore:s}=await chrome.storage.local.get('chatStore');const key='chat:'+s.active;const c=(await chrome.storage.local.get(key))[key];c.messages.push({role:'user',content:'中断测试'},{role:'assistant',content:'',pending:true});await chrome.storage.local.set({[key]:c});});
     await page.reload();await page.waitForFunction(()=>document.querySelector('#messages').textContent.includes('上次生成已中断'));
     assert.equal(await page.locator('#send').isDisabled(),false);assert.equal(stalledRequests,1);
     checks.push('Stalled request can stop, generation locks selectors, reload recovers pending answer and never auto-resends');
     const mathText=[String.raw`行内公式：\(a^2+b^2=c^2\)，以及 $E=mc^2$。`,'','## 分式与根号',String.raw`\[x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}\]`,'','## 积分',String.raw`\[\int_{-\infty}^{+\infty}e^{-x^2}\,dx=\sqrt{\pi}\]`,'','## 矩阵',String.raw`$$\begin{pmatrix}1&2\\3&4\end{pmatrix}$$`,'','## 求和',String.raw`\[e^x=\sum_{n=0}^{\infty}\frac{x^n}{n!}\]`,'','代码保持原样：`\\(n=2\\)`','','```tex','\\[x^2\\]','```','',String.raw`不支持的公式：\(\unknowncommand{x}\)`].join('\n');
-    await worker.evaluate(async content=>{const {chatStore:s}=await chrome.storage.local.get('chatStore');const c=s.chats.find(c=>c.id===s.active);c.messages=[{role:'assistant',content}];await chrome.storage.local.set({chatStore:s});},mathText);
+    await worker.evaluate(async content=>{const {chatStore:s}=await chrome.storage.local.get('chatStore');const key='chat:'+s.active;const c=(await chrome.storage.local.get(key))[key];c.messages=[{role:'assistant',content}];await chrome.storage.local.set({[key]:c});},mathText);
     await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.katex').length===6);
     assert.equal(await page.locator('.math-display .katex').count(),4);
     assert.equal(await page.locator('.math-error').count(),1);
@@ -173,11 +173,11 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
     await ctx.route('https://api.openai.com/v1/responses',route=>{materialRequests.push(route.request().postDataJSON());return route.fulfill({status:200,contentType:'text/event-stream',body:'data: '+JSON.stringify({type:'response.completed',response:{output:[{type:'message',role:'assistant',content:[{type:'output_text',text:'资料已收到。'}]}]}})+'\n\n'});});
     await page.locator('#prompt').fill('你好');await page.locator('#send').click();await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
     assert.equal(materialRequests.at(-1).tools,undefined);assert.equal(materialRequests.at(-1).input.at(-1).content.length,1);
-    await ctx.route('https://api.openai.com/sidebar-fixture',route=>route.fulfill({contentType:'text/html;charset=utf-8',body:'<!doctype html><title>测试论文</title><main><h1>Bloch theorem</h1><p>Electron in a periodic potential.</p><form>PRIVATE-FORM<input value="SECRET"></form><div hidden>HIDDEN-SECRET</div><div style="display:none">CSS-HIDDEN-SECRET</div></main>'}));
+    await ctx.route('https://api.openai.com/sidebar-fixture',route=>route.fulfill({contentType:'text/html;charset=utf-8',body:'<!doctype html><title>测试论文</title><main><h1>Bloch theorem</h1><table><tr><th>Count</th><th>Speed</th></tr><tr><td>12</td><td>34</td></tr></table><p>Electron in a periodic potential.</p><form>PRIVATE-FORM<input value="SECRET"></form><div hidden>HIDDEN-SECRET</div><div style="display:none">CSS-HIDDEN-SECRET</div></main>'}));
     const web=await ctx.newPage();await web.goto('https://api.openai.com/sidebar-fixture');
     const target=await worker.evaluate(async()=>{const [t]=await chrome.tabs.query({active:true,lastFocusedWindow:true});return {id:t.id,windowId:t.windowId,url:t.url,title:t.title};});
     const read=await page.evaluate(async target=>chrome.runtime.sendMessage({type:'browserMaterial',mode:'read',target}),target);
-    assert.equal(read.ok,true);assert.ok(read.material.text.includes('periodic potential'));assert.ok(!read.material.text.includes('PRIVATE-FORM'));assert.ok(!read.material.text.includes('HIDDEN-SECRET'));
+    assert.equal(read.ok,true);assert.ok(read.material.text.includes('periodic potential'));assert.match(read.material.text,/12 \| 34/);assert.match(read.material.text,/Count \| Speed/);assert.ok(!read.material.text.includes('PRIVATE-FORM'));assert.ok(!read.material.text.includes('HIDDEN-SECRET'));
     await page.evaluate(()=>{document.getElementById('prompt').value='读一下当前网页';document.getElementById('send').click();});
     await page.waitForFunction(()=>document.getElementById('requestStatus').textContent==='回答完成');
     await page.waitForTimeout(200);
