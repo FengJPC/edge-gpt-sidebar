@@ -86,13 +86,14 @@ test('real background routes reuse clients after logout, allow explicit new acco
   globalThis.fetch=async(url,options)=>{
     if(url===AUTH+'/.well-known/jwks.json')return {ok:true,json:async()=>({keys:[jwk]})};
     assert.equal(url,AUTH+'/api/accounts/oauth/token');
+    if(options.body.get('grant_type')==='refresh_token'){refreshes++;await new Promise(r=>setTimeout(r,10));return {ok:true,json:async()=>({access_token:'FAKE-REFRESHED',refresh_token:'FAKE-ROTATED',scope:'chatgpt.tokens.use.direct',expires_in:30,earliest_refresh_at:new Date(Date.now()+20000).toISOString()})};}
     const clientId=options.body.get('client_id');
     const pending=callbackPending;
     const parts=[b64url(new TextEncoder().encode(JSON.stringify({alg:'RS256',kid:'fixture'}))),b64url(new TextEncoder().encode(JSON.stringify({iss:AUTH,aud:clientId,nonce:pending.nonce,sub:subject,email:account.email,exp:Math.floor(Date.now()/1000)+3600})))];
     const signature=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',pair.privateKey,new TextEncoder().encode(parts.join('.')));
     return {ok:true,json:async()=>({access_token:'FAKE-ACCESS-NEW',refresh_token:'FAKE-REFRESH-NEW',id_token:parts.join('.')+'.'+b64url(signature),scope:'openid chatgpt.tokens.use.direct',expires_in:3600})};
   };
-  let callbackPending;
+  let callbackPending,refreshes=0;
   const rpc=message=>new Promise(resolve=>messageHandler(message,{id:'fixture',url:'chrome-extension://fixture/sidepanel.html'},resolve));
   async function finish(clientId) {
     callbackPending=session.state.pending;
@@ -123,6 +124,15 @@ test('real background routes reuse clients after logout, allow explicit new acco
     subject='user-a';await rpc({type:'login',clientId:account.clientId});await finish(account.clientId);
     assert.equal(local.state.credential.subject,'user-a');
     assert.equal(local.state.accountRegistrations.accounts.length,2);
+    await local.set({credential:{...local.state.credential,expiresAt:Date.now()+10000,earliestRefreshAt:Date.now()+20000}});
+    assert.equal((await rpc({type:'token'})).token,'FAKE-ACCESS-NEW');assert.equal(refreshes,0);
+    await local.set({credential:{...local.state.credential,expiresAt:Date.now()-1}});
+    assert.match((await rpc({type:'token'})).error,/暂未允许刷新/);assert.equal(refreshes,0);
+    await local.set({credential:{...local.state.credential,earliestRefreshAt:0}});
+    const refreshed=await Promise.all([rpc({type:'token'}),rpc({type:'token'})]);
+    assert.ok(refreshed.every(r=>r.token==='FAKE-REFRESHED'));assert.equal(refreshes,1);
+    assert.ok(Date.parse(local.state.credential.earliestRefreshAt)>Date.now());
+    assert.equal((await rpc({type:'token'})).token,'FAKE-REFRESHED');assert.equal(refreshes,1);
     const publicAccounts=await rpc({type:'accounts'});
     assert.equal(publicAccounts.ok,true);
     assert.ok(!JSON.stringify(publicAccounts).includes('FAKE-'));

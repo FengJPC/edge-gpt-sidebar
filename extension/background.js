@@ -1,3 +1,4 @@
+import {canUseToken} from './token-policy.js';
 import {t,setLanguage} from './i18n.js';
 import {activePage,browserMaterial} from './browser-material.js';
 import {AUTH, API, CALLBACK, randomToken, challenge, authorizationUrl, parseCallback, verifyIdToken, modelsFrom} from './core.js';
@@ -73,13 +74,13 @@ chrome.webNavigation.onBeforeNavigate.addListener(async details => {
 async function accessToken() {
   const {credential: c} = await chrome.storage.local.get('credential');
   if (!c) throw new Error('请先连接 ChatGPT 账号。');
-  if (c.expiresAt > Date.now() + 60000) return c.accessToken;
+  if (canUseToken(c)) return c.accessToken;
   if (!renewing) renewing = (async () => {
     const t = await tokenRequest({grant_type: 'refresh_token', client_id: c.clientId, refresh_token: c.refreshToken, resource: API});
     if (!t.access_token || !t.refresh_token || !Number.isFinite(t.expires_in) || (t.scope && !t.scope.split(' ').includes('chatgpt.tokens.use.direct'))) throw new Error('刷新授权返回不完整，请重新登录。');
     const current = (await chrome.storage.local.get('credential')).credential;
     if (!current || current.refreshToken !== c.refreshToken) throw new Error('账号已更改，已取消保存刷新结果。');
-    await chrome.storage.local.set({credential: {...c, accessToken: t.access_token, refreshToken: t.refresh_token, expiresAt: Date.now() + t.expires_in * 1000}});
+    await chrome.storage.local.set({credential: {...c, accessToken: t.access_token, refreshToken: t.refresh_token, expiresAt: Date.now() + t.expires_in * 1000, earliestRefreshAt: t.earliest_refresh_at || 0}});
     return t.access_token;
   })().finally(() => { renewing = null; });
   return renewing;
