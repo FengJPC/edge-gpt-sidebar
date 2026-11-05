@@ -168,6 +168,16 @@ const root = path.resolve(__dirname, '..'), extension = path.join(root, 'extensi
     await page.setViewportSize({width:320,height:720});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     checks.push('KaTeX renders inline math, fraction, integral, matrix and sum offline; code/fallback preserved; 5 MB preference persists and narrow sidebar fits');
+    const multilineMath=fs.readFileSync(path.join(root,'tests/fixtures/math-response.md'),'utf8');
+    await worker.evaluate(async content=>{const {chatStore:s}=await chrome.storage.local.get('chatStore');const key='chat:'+s.active;const c=(await chrome.storage.local.get(key))[key];c.messages=[{role:'assistant',content}];await chrome.storage.local.set({[key]:c});},multilineMath);
+    await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.katex').length===9);
+    assert.equal(await page.locator('.math-display .katex').count(),5);
+    assert.equal(await page.locator('.math-error,.message.assistant h1').count(),0);
+    assert.ok((await page.locator('pre code').innerText()).includes('x\n=\ny'));
+    await page.locator('.math-display').nth(2).scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(root,'artifacts','sidebar-math-multiline.png')});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    checks.push('Multiline physics formulas with standalone equals render from reopened history; no accidental headings, code examples unchanged');
     await ctx.unroute('https://api.openai.com/v1/responses');
     const materialRequests=[];
     await ctx.route('https://api.openai.com/v1/responses',route=>{materialRequests.push(route.request().postDataJSON());return route.fulfill({status:200,contentType:'text/event-stream',body:'data: '+JSON.stringify({type:'response.completed',response:{output:[{type:'message',role:'assistant',content:[{type:'output_text',text:'资料已收到。'}]}]}})+'\n\n'});});

@@ -120,3 +120,7 @@ Diagnostic `calls` remain hosted metadata only; `local_calls` contain actual pub
 Static extraction now preserves available TeX annotations and common formula-image alternative text without loading images or executing scripts. It does not perform OCR or guarantee support for every math format. HTML results include at most 20 unique public HTTPS body links, with `link_count` and `links_truncated`; same-page anchors, private/literal addresses and credential-bearing URLs are excluded. Diagnostics keep counts/flags, not the complete link list.
 
 Run `node scripts/probe-public.cjs` only when you want a live public-network check (about 11 URLs in the default list). It uses a separate temporary Edge profile and runtime copy, declares only the listed test hosts, never loads real accounts or requests model APIs, and saves raw reports/screenshots only in ignored local `artifacts/`. This tests direct extension tools, not subscription-model hosted search. Redirects remain unfollowed; use a verified final public URL or hosted search for sites that redirect for language or canonicalization.
+
+## Math rendering fix in 0.5.1
+
+Display formulas containing a standalone equals line no longer become Markdown Setext headings. Saved replies use the corrected rendering when reopened, while code examples retain their original text.
